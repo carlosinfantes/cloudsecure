@@ -86,4 +86,8 @@ docs/presentation/
 # Assessment reports (contain real account data)
 cloudsecure-report.*
 *.report.html
+
+# Generated demo HTML (screenshots are committed, HTML is regenerable)
+docs/screenshots/demo-report.html
 CLAUDE.md
+docs/screenshots/report-full.png

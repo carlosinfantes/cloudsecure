@@ -32,6 +32,24 @@ CloudSecure combines open-source security tools (Prowler), custom analysis modul
 - **Portable**: Can assess any AWS account with read permissions
 - **Gap Detection**: Missing security services are findings, not blockers
 
+## Report Demo
+
+CloudSecure generates professional HTML reports with AI-powered executive summaries, risk scoring, and detailed findings across all security domains.
+
+### Assessment Header & Risk Score
+![Report Header](docs/screenshots/report-header.png)
+
+### Findings Summary
+![Findings Summary](docs/screenshots/report-summary.png)
+
+### AI-Powered Executive Summary
+![Executive Summary](docs/screenshots/report-executive.png)
+
+### Detailed Findings by Category
+![Detailed Findings](docs/screenshots/report-findings.png)
+
+> Screenshots generated with fictitious data. See `docs/generate_demo_report.py` to regenerate.
+
 ## Project Information
 
 | Field | Value |
