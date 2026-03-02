@@ -33,6 +33,24 @@ CloudSecure runs **100% serverless inside AWS**. No CLI, no laptops, no credenti
 - **AI-powered synthesis** — 7 analyzers run in parallel, Bedrock Claude synthesizes raw findings into prioritized, actionable intelligence.
 - **Auditable by design** — every assessment tracked in DynamoDB with full execution trail through Step Functions.
 
+## Report Demo
+
+CloudSecure generates professional HTML reports with AI-powered executive summaries, risk scoring, and detailed findings across all security domains.
+
+### Assessment Header & Risk Score
+![Report Header](docs/screenshots/report-header.png)
+
+### Findings Summary
+![Findings Summary](docs/screenshots/report-summary.png)
+
+### AI-Powered Executive Summary
+![Executive Summary](docs/screenshots/report-executive.png)
+
+### Detailed Findings by Category
+![Detailed Findings](docs/screenshots/report-findings.png)
+
+> Screenshots generated with fictitious data. See `docs/generate_demo_report.py` to regenerate.
+
 ## Architecture
 
 ```
