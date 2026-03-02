@@ -1,0 +1,89 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# CDK
+cdk.out/
+infrastructure/cdk.out/
+*.js
+!jest.config.js
+*.d.ts
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment & Secrets
+.env
+.env.*
+*.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.p12
+id_rsa
+id_ed25519
+credentials.json
+config.local.*
+secrets.*
+credentials.*
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+*.cover
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Package locks (keep package-lock.json, ignore others)
+yarn.lock
+pnpm-lock.yaml
+
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+
+# AWS
+.aws-sam/
+samconfig.toml
+
+# Lambda layer (rebuild via Docker - see lambdas/layer/README.md)
+lambdas/layer/python/
+
+# Internal materials
+docs/presentation/
+
+# Assessment reports (contain real account data)
+cloudsecure-report.*
+*.report.html
+CLAUDE.md

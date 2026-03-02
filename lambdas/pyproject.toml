@@ -1,0 +1,53 @@
+[project]
+name = "cloudsecure-lambdas"
+version = "1.0.0"
+description = "CloudSecure Assessment Platform - Lambda Functions"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "CloudSecure Contributors" }
+]
+
+dependencies = [
+    "boto3>=1.34.0",
+    "pydantic>=2.5.0",
+    "python-dateutil>=2.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+    "moto[all]>=5.0.0",
+    "ruff>=0.2.0",
+    "black>=24.0.0",
+    "mypy>=1.8.0",
+    "boto3-stubs[essential]>=1.34.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=shared --cov-report=term-missing"

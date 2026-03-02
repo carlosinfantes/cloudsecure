@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudSecure Security Assessment Report</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+            color: white;
+            padding: 40px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        header .subtitle {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .meta-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px 40px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .meta-item {
+            text-align: center;
+        }
+
+        .meta-item .label {
+            font-size: 0.85rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .meta-item .value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1a365d;
+            margin-top: 5px;
+        }
+
+        .risk-score {
+            text-align: center;
+            padding: 40px;
+            background: white;
+        }
+
+        .risk-gauge {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            position: relative;
+            background: conic-gradient(
+                {{ severity_colors.CRITICAL }} 0deg,
+                {{ severity_colors.HIGH }} 72deg,
+                {{ severity_colors.MEDIUM }} 144deg,
+                {{ severity_colors.LOW }} 216deg,
+                {{ severity_colors.INFO }} 288deg,
+                {{ severity_colors.CRITICAL }} 360deg
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .risk-gauge-inner {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .risk-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #1a365d;
+        }
+
+        .risk-label {
+            font-size: 1rem;
+            color: #6c757d;
+        }
+
+        .risk-level {
+            display: inline-block;
+            padding: 8px 24px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .risk-level.CRITICAL { background: {{ severity_colors.CRITICAL }}; color: white; }
+        .risk-level.HIGH { background: {{ severity_colors.HIGH }}; color: white; }
+        .risk-level.MEDIUM { background: {{ severity_colors.MEDIUM }}; color: #333; }
+        .risk-level.LOW { background: {{ severity_colors.LOW }}; color: white; }
+        .risk-level.MINIMAL { background: #28a745; color: white; }
+
+        section {
+            padding: 40px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        section:last-child {
+            border-bottom: none;
+        }
+
+        h2 {
+            color: #1a365d;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .severity-card {
+            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            color: white;
+        }
+
+        .severity-card.critical { background: {{ severity_colors.CRITICAL }}; }
+        .severity-card.high { background: {{ severity_colors.HIGH }}; }
+        .severity-card.medium { background: {{ severity_colors.MEDIUM }}; color: #333; }
+        .severity-card.low { background: {{ severity_colors.LOW }}; }
+        .severity-card.info { background: {{ severity_colors.INFO }}; }
+
+        .severity-card .count {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .severity-card .label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .executive-summary {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            border-left: 4px solid #1a365d;
+        }
+
+        .executive-summary p {
+            margin-bottom: 15px;
+        }
+
+        .executive-summary p:last-child {
+            margin-bottom: 0;
+        }
+
+        .list-section ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .list-section li {
+            padding: 15px;
+            background: #f8f9fa;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #1a365d;
+        }
+
+        .findings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .findings-table th {
+            background: #1a365d;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .findings-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            vertical-align: top;
+        }
+
+        .findings-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .severity-badge.CRITICAL { background: {{ severity_colors.CRITICAL }}; color: white; }
+        .severity-badge.HIGH { background: {{ severity_colors.HIGH }}; color: white; }
+        .severity-badge.MEDIUM { background: {{ severity_colors.MEDIUM }}; color: #333; }
+        .severity-badge.LOW { background: {{ severity_colors.LOW }}; color: white; }
+        .severity-badge.INFO { background: {{ severity_colors.INFO }}; color: white; }
+
+        .resource-info {
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #6c757d;
+            word-break: break-all;
+        }
+
+        .category-section {
+            margin-bottom: 40px;
+        }
+
+        .category-section h3 {
+            color: #2c5282;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .container {
+                box-shadow: none;
+            }
+
+            section {
+                page-break-inside: avoid;
+            }
+
+            .findings-table {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CloudSecure Security Assessment</h1>
+            <p class="subtitle">AWS Account Security Posture Report</p>
+        </header>
+
+        <div class="meta-info">
+            <div class="meta-item">
+                <div class="label">Assessment ID</div>
+                <div class="value">{{ assessment.assessmentId[:8] }}...</div>
+            </div>
+            <div class="meta-item">
+                <div class="label">AWS Account</div>
+                <div class="value">{{ assessment.accountId }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="label">Assessment Date</div>
+                <div class="value">{{ assessment.startedAt[:10] if assessment.startedAt else 'N/A' }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="label">Report Generated</div>
+                <div class="value">{{ generated_at[:10] }}</div>
+            </div>
+        </div>
+
+        <div class="risk-score">
+            <div class="risk-gauge">
+                <div class="risk-gauge-inner">
+                    <div class="risk-value">{{ assessment.riskScore }}</div>
+                    <div class="risk-label">Risk Score</div>
+                </div>
+            </div>
+            <div class="risk-level {{ assessment.riskLevel }}">{{ assessment.riskLevel }} Risk</div>
+        </div>
+
+        <section>
+            <h2>Findings Summary</h2>
+            <div class="summary-grid">
+                <div class="severity-card critical">
+                    <div class="count">{{ findings_by_severity.CRITICAL | length }}</div>
+                    <div class="label">Critical</div>
+                </div>
+                <div class="severity-card high">
+                    <div class="count">{{ findings_by_severity.HIGH | length }}</div>
+                    <div class="label">High</div>
+                </div>
+                <div class="severity-card medium">
+                    <div class="count">{{ findings_by_severity.MEDIUM | length }}</div>
+                    <div class="label">Medium</div>
+                </div>
+                <div class="severity-card low">
+                    <div class="count">{{ findings_by_severity.LOW | length }}</div>
+                    <div class="label">Low</div>
+                </div>
+                <div class="severity-card info">
+                    <div class="count">{{ findings_by_severity.INFO | length }}</div>
+                    <div class="label">Info</div>
+                </div>
+            </div>
+        </section>
+
+        {% if assessment.executiveSummary %}
+        <section>
+            <h2>Executive Summary</h2>
+            <div class="executive-summary">
+                {% for paragraph in assessment.executiveSummary.split('\n\n') %}
+                <p>{{ paragraph }}</p>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if assessment.keyFindings %}
+        <section class="list-section">
+            <h2>Key Findings</h2>
+            <ul>
+                {% for finding in assessment.keyFindings %}
+                <li>{{ finding }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if assessment.patterns %}
+        <section class="list-section">
+            <h2>Identified Patterns</h2>
+            <ul>
+                {% for pattern in assessment.patterns %}
+                <li>{{ pattern }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        {% if assessment.remediationPriorities %}
+        <section class="list-section">
+            <h2>Remediation Priorities</h2>
+            <ul>
+                {% for priority in assessment.remediationPriorities %}
+                <li>{{ priority }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+        {% endif %}
+
+        <section>
+            <h2>Detailed Findings</h2>
+
+            {% for category, category_findings in findings_by_category.items() %}
+            <div class="category-section">
+                <h3>{{ category }} ({{ category_findings | length }} findings)</h3>
+                <table class="findings-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 100px;">Severity</th>
+                            <th style="width: 30%;">Title</th>
+                            <th>Description</th>
+                            <th style="width: 20%;">Resource</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for finding in category_findings %}
+                        <tr>
+                            <td><span class="severity-badge {{ finding.severity }}">{{ finding.severity }}</span></td>
+                            <td>{{ finding.title }}</td>
+                            <td>{{ finding.description[:200] }}{% if finding.description | length > 200 %}...{% endif %}</td>
+                            <td>
+                                <div class="resource-info">
+                                    <strong>{{ finding.resourceType }}</strong><br>
+                                    {{ finding.resourceId }}<br>
+                                    <small>{{ finding.region }}</small>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        </section>
+
+        <footer>
+            <p>Generated by CloudSecure Assessment Platform</p>
+            <p>Report generated on {{ generated_at }}</p>
+            <p>This report contains confidential security information. Handle according to your organization's data classification policy.</p>
+        </footer>
+    </div>
+</body>
+</html>

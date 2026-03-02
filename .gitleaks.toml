@@ -1,0 +1,9 @@
+# Gitleaks configuration
+# Allowlist for known false positives (test fixtures, documentation examples)
+
+[allowlist]
+description = "CloudSecure allowlist"
+
+paths = [
+  '''lambdas/tests/test_aws_client\.py''',
+]

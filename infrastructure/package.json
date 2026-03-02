@@ -1,0 +1,32 @@
+{
+  "name": "cloudsecure-infrastructure",
+  "version": "1.0.0",
+  "description": "CloudSecure Assessment Platform - CDK Infrastructure",
+  "bin": {
+    "cloudsecure": "bin/cloudsecure.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "deploy:dev": "cdk deploy --all -c env=dev",
+    "deploy:test": "cdk deploy --all -c env=test",
+    "deploy:prod": "cdk deploy --all -c env=prod --require-approval broadening"
+  },
+  "devDependencies": {
+    "@types/jest": "^30",
+    "@types/node": "^24.10.1",
+    "jest": "^30",
+    "ts-jest": "^29",
+    "aws-cdk": "2.1102.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.235.1",
+    "constructs": "^10.0.0"
+  }
+}

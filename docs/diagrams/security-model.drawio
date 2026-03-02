@@ -1,0 +1,208 @@
+<mxfile host="app.diagrams.net" modified="2026-01-23T12:00:00.000Z" agent="Draw.io" version="22.1.0" type="device">
+  <diagram id="security-model" name="Security Model">
+    <mxGraphModel dx="1434" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="title" value="CloudSecure Security Model" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#232F3E;" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="400" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Secure Cross-Account Assessment with Zero Trust Principles" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="300" y="50" width="500" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Section 1: Cross-Account Access -->
+        <mxCell id="section1-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E1;strokeColor=#FFA000;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="500" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="section1-title" value="1. Cross-Account Access Model" style="text;html=1;strokeColor=none;fillColor=#FFA000;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="240" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- CloudSecure Account -->
+        <mxCell id="cs-account" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1976D2;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="150" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="cs-label" value="CloudSecure Account" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#1976D2;" vertex="1" parent="1">
+          <mxGeometry x="100" y="155" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lambda-role" value="Lambda&#xa;Execution Role" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F54749;gradientDirection=north;fillColor=#C7131F;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.identity_and_access_management;" vertex="1" parent="1">
+          <mxGeometry x="130" y="185" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Customer Account -->
+        <mxCell id="cust-account" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#FF9800;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="150" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="cust-label" value="Customer Account" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#FF9800;" vertex="1" parent="1">
+          <mxGeometry x="360" y="155" width="120" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cust-role" value="Assessment&#xa;Role" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F54749;gradientDirection=north;fillColor=#C7131F;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=9;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.identity_and_access_management;" vertex="1" parent="1">
+          <mxGeometry x="390" y="185" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- STS Arrow -->
+        <mxCell id="sts-arrow" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#FF9800;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="200" y="215" as="sourcePoint" />
+            <mxPoint x="380" y="215" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sts-label" value="STS AssumeRole" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=1;fontColor=#FF9800;" vertex="1" parent="1">
+          <mxGeometry x="240" y="190" width="100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- External ID Box -->
+        <mxCell id="external-id-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#C62828;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="290" width="460" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="external-id-icon" value="🔐" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;" vertex="1" parent="1">
+          <mxGeometry x="70" y="305" width="40" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="external-id-title" value="External ID Validation (Confused Deputy Prevention)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#C62828;" vertex="1" parent="1">
+          <mxGeometry x="110" y="295" width="350" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="external-id-desc" value="• Unique External ID per customer prevents unauthorized access&#xa;• Role trust policy requires matching External ID&#xa;• CloudSecure never stores customer credentials" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="110" y="320" width="400" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Section 2: Access Control -->
+        <mxCell id="section2-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#4CAF50;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="560" y="100" width="500" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="section2-title" value="2. Centralized Execution Model" style="text;html=1;strokeColor=none;fillColor=#4CAF50;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="570" y="110" width="240" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Allowed: CloudSecure Platform -->
+        <mxCell id="allowed-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#C8E6C9;strokeColor=#388E3C;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="580" y="150" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="allowed-check" value="✓" style="text;html=1;strokeColor=none;fillColor=#388E3C;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=20;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="590" y="155" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="allowed-title" value="ALLOWED" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#388E3C;" vertex="1" parent="1">
+          <mxGeometry x="625" y="155" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="allowed-server" value="CloudSecure&#xa;Platform" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.lambda;" vertex="1" parent="1">
+          <mxGeometry x="680" y="185" width="50" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Not Allowed: Laptop -->
+        <mxCell id="notallowed-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFCDD2;strokeColor=#C62828;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="820" y="150" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="notallowed-x" value="✗" style="text;html=1;strokeColor=none;fillColor=#C62828;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=20;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="830" y="155" width="30" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="notallowed-title" value="NOT ALLOWED" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#C62828;" vertex="1" parent="1">
+          <mxGeometry x="865" y="155" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="laptop-icon" value="💻" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=40;" vertex="1" parent="1">
+          <mxGeometry x="895" y="180" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="laptop-cross" value="" style="endArrow=none;html=1;strokeWidth=4;strokeColor=#C62828;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="895" y="240" as="sourcePoint" />
+            <mxPoint x="955" y="180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Benefits -->
+        <mxCell id="benefits-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#388E3C;strokeWidth=1;" vertex="1" parent="1">
+          <mxGeometry x="580" y="260" width="460" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="benefits-text" value="Benefits of Centralized Execution:&#xa;• Full audit trail of all assessments&#xa;• No credentials on developer laptops&#xa;• Consistent, reproducible results&#xa;• Controlled access through API only&#xa;• Compliant with security policies" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="590" y="265" width="440" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Section 3: Encryption -->
+        <mxCell id="section3-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1976D2;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="500" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="section3-title" value="3. Data Encryption" style="text;html=1;strokeColor=none;fillColor=#1976D2;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="50" y="410" width="150" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- KMS -->
+        <mxCell id="kms-icon" value="KMS" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=#F54749;gradientDirection=north;fillColor=#C7131F;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.key_management_service;" vertex="1" parent="1">
+          <mxGeometry x="70" y="460" width="60" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Encrypted Resources -->
+        <mxCell id="enc-s3" value="S3 Bucket&#xa;(SSE-KMS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1976D2;" vertex="1" parent="1">
+          <mxGeometry x="160" y="450" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="enc-dynamo" value="DynamoDB&#xa;(Encrypted)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1976D2;" vertex="1" parent="1">
+          <mxGeometry x="280" y="450" width="100" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="enc-logs" value="CloudWatch&#xa;Logs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1976D2;" vertex="1" parent="1">
+          <mxGeometry x="400" y="450" width="100" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Encryption arrows -->
+        <mxCell id="enc-arrow1" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#1976D2;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="130" y="490" as="sourcePoint" />
+            <mxPoint x="160" y="475" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="enc-arrow2" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#1976D2;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="130" y="490" as="sourcePoint" />
+            <mxPoint x="280" y="475" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="enc-arrow3" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#1976D2;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="130" y="490" as="sourcePoint" />
+            <mxPoint x="400" y="475" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Encryption details -->
+        <mxCell id="enc-details" value="• Customer-managed KMS key&#xa;• Encryption at rest for all data&#xa;• TLS 1.2+ in transit&#xa;• 90-day TTL on assessment data" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="160" y="510" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Section 4: Permissions -->
+        <mxCell id="section4-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="560" y="400" width="500" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="section4-title" value="4. Read-Only Permissions" style="text;html=1;strokeColor=none;fillColor=#7B1FA2;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="570" y="410" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Permissions list -->
+        <mxCell id="perm-allowed" value="✓ Allowed Actions" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#388E3C;" vertex="1" parent="1">
+          <mxGeometry x="580" y="450" width="150" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="perm-allowed-list" value="• iam:Get*, iam:List*&#xa;• ec2:Describe*&#xa;• s3:GetBucket*, s3:List*&#xa;• rds:Describe*&#xa;• cloudtrail:Get*, Describe*&#xa;• securityhub:Get*&#xa;• guardduty:Get*, List*" style="text;html=1;strokeColor=none;fillColor=#E8F5E9;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="580" y="475" width="150" height="115" as="geometry" />
+        </mxCell>
+
+        <mxCell id="perm-denied" value="✗ Denied Actions" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#C62828;" vertex="1" parent="1">
+          <mxGeometry x="750" y="450" width="150" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="perm-denied-list" value="• Create/Delete/Update *&#xa;• Put/Modify *&#xa;• Start/Stop/Terminate *&#xa;• Any write operations&#xa;• Data access (S3 objects)&#xa;• Secret values" style="text;html=1;strokeColor=none;fillColor=#FFEBEE;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="750" y="475" width="150" height="115" as="geometry" />
+        </mxCell>
+
+        <!-- Least Privilege Badge -->
+        <mxCell id="lp-badge" value="🛡️ Least Privilege&#xa;Principle" style="text;html=1;strokeColor=#7B1FA2;fillColor=#F3E5F5;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontColor=#7B1FA2;" vertex="1" parent="1">
+          <mxGeometry x="920" y="450" width="120" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- Footer -->
+        <mxCell id="footer" value="CloudSecure follows AWS Well-Architected Security Pillar best practices" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="300" y="620" width="500" height="30" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

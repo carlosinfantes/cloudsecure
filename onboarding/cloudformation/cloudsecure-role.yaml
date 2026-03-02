@@ -1,0 +1,216 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CloudSecure Assessment Role - Creates an IAM role that allows CloudSecure
+  to perform read-only security assessments of your AWS account.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: CloudSecure Configuration
+        Parameters:
+          - CloudSecureAccountId
+          - ExternalId
+      - Label:
+          default: Role Configuration
+        Parameters:
+          - RoleName
+          - PermissionsBoundary
+    ParameterLabels:
+      CloudSecureAccountId:
+        default: CloudSecure AWS Account ID
+      ExternalId:
+        default: External ID (provided by CloudSecure)
+      RoleName:
+        default: IAM Role Name
+      PermissionsBoundary:
+        default: Permissions Boundary ARN (optional)
+
+Parameters:
+  CloudSecureAccountId:
+    Type: String
+    Description: The AWS Account ID where CloudSecure is deployed
+    AllowedPattern: '^[0-9]{12}$'
+    ConstraintDescription: Must be a valid 12-digit AWS Account ID
+
+  ExternalId:
+    Type: String
+    Description: >
+      The External ID provided by CloudSecure. This is a unique identifier
+      that prevents confused deputy attacks.
+    MinLength: 16
+    MaxLength: 128
+    NoEcho: true
+
+  RoleName:
+    Type: String
+    Default: CloudSecureAssessmentRole
+    Description: Name for the IAM role
+    AllowedPattern: '^[a-zA-Z0-9+=,.@_-]+$'
+    MaxLength: 64
+
+  PermissionsBoundary:
+    Type: String
+    Default: ''
+    Description: >
+      (Optional) ARN of a permissions boundary policy to attach to the role.
+      Leave empty if not required.
+
+Conditions:
+  HasPermissionsBoundary: !Not [!Equals [!Ref PermissionsBoundary, '']]
+
+Resources:
+  CloudSecureRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      Description: >
+        Read-only role for CloudSecure security assessments. This role allows
+        CloudSecure to analyze your AWS environment for security best practices.
+      PermissionsBoundary: !If
+        - HasPermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${CloudSecureAccountId}:root'
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref ExternalId
+      ManagedPolicyArns:
+        # AWS managed policies for read-only access
+        - arn:aws:iam::aws:policy/ReadOnlyAccess
+        - arn:aws:iam::aws:policy/SecurityAudit
+      Tags:
+        - Key: Purpose
+          Value: CloudSecure-Security-Assessment
+        - Key: ManagedBy
+          Value: CloudFormation
+        - Key: CreatedAt
+          Value: !Ref 'AWS::StackName'
+
+  # Additional policy for specific security service access
+  CloudSecureSecurityPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: CloudSecureSecurityAccess
+      Roles:
+        - !Ref CloudSecureRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          # SecurityHub access
+          - Sid: SecurityHubAccess
+            Effect: Allow
+            Action:
+              - securityhub:GetFindings
+              - securityhub:GetInsights
+              - securityhub:GetEnabledStandards
+              - securityhub:DescribeHub
+              - securityhub:DescribeStandards
+              - securityhub:DescribeStandardsControls
+            Resource: '*'
+
+          # GuardDuty access
+          - Sid: GuardDutyAccess
+            Effect: Allow
+            Action:
+              - guardduty:GetDetector
+              - guardduty:GetFindings
+              - guardduty:ListDetectors
+              - guardduty:ListFindings
+              - guardduty:GetFindingsStatistics
+            Resource: '*'
+
+          # AWS Config access
+          - Sid: ConfigAccess
+            Effect: Allow
+            Action:
+              - config:DescribeConfigRules
+              - config:DescribeConfigurationRecorders
+              - config:DescribeComplianceByConfigRule
+              - config:GetComplianceDetailsByConfigRule
+              - config:DescribeConfigRuleEvaluationStatus
+            Resource: '*'
+
+          # Access Analyzer access
+          - Sid: AccessAnalyzerAccess
+            Effect: Allow
+            Action:
+              - access-analyzer:ListAnalyzers
+              - access-analyzer:ListFindings
+              - access-analyzer:GetFinding
+            Resource: '*'
+
+          # Inspector access
+          - Sid: InspectorAccess
+            Effect: Allow
+            Action:
+              - inspector2:ListFindings
+              - inspector2:GetFindingsReportStatus
+              - inspector2:ListCoverage
+            Resource: '*'
+
+          # Macie access
+          - Sid: MacieAccess
+            Effect: Allow
+            Action:
+              - macie2:GetMacieSession
+              - macie2:ListFindings
+              - macie2:GetFindings
+              - macie2:GetFindingStatistics
+            Resource: '*'
+
+          # Support for account-level information
+          - Sid: AccountAccess
+            Effect: Allow
+            Action:
+              - account:GetAlternateContact
+              - account:GetContactInformation
+            Resource: '*'
+
+          # Organizations read access (for organizational context)
+          - Sid: OrganizationsAccess
+            Effect: Allow
+            Action:
+              - organizations:DescribeOrganization
+              - organizations:DescribeAccount
+              - organizations:ListAccounts
+              - organizations:ListTagsForResource
+            Resource: '*'
+
+Outputs:
+  RoleArn:
+    Description: ARN of the CloudSecure assessment role
+    Value: !GetAtt CloudSecureRole.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-RoleArn'
+
+  RoleName:
+    Description: Name of the CloudSecure assessment role
+    Value: !Ref CloudSecureRole
+    Export:
+      Name: !Sub '${AWS::StackName}-RoleName'
+
+  ExternalIdRequired:
+    Description: Reminder that External ID is required for role assumption
+    Value: 'true'
+
+  Instructions:
+    Description: Next steps after deployment
+    Value: !Sub |
+      CloudSecure role created successfully!
+
+      Role ARN: ${CloudSecureRole.Arn}
+
+      Next steps:
+      1. Copy the Role ARN above
+      2. Return to CloudSecure and paste the Role ARN
+      3. Start your first security assessment
+
+      This role provides read-only access to your AWS resources
+      for security assessment purposes only.

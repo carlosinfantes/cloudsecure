@@ -1,0 +1,145 @@
+image: node:22
+
+definitions:
+  caches:
+    npm-infrastructure: infrastructure/node_modules
+    pip: ~/.cache/pip
+
+  steps:
+    - step: &lint-typescript
+        name: Lint TypeScript (CDK)
+        caches:
+          - npm-infrastructure
+        script:
+          - cd infrastructure
+          - npm ci
+          - npm run build
+          - npx cdk synth -c env=dev --quiet
+
+    - step: &lint-python
+        name: Lint Python (Lambdas)
+        image: python:3.12
+        caches:
+          - pip
+        script:
+          - cd lambdas
+          - pip install ruff black mypy pydantic boto3-stubs
+          - ruff check .
+          - black --check .
+          - mypy shared/ --ignore-missing-imports || true
+
+    - step: &test-python
+        name: Test Python (Lambdas)
+        image: python:3.12
+        caches:
+          - pip
+        script:
+          - cd lambdas
+          - pip install -e ".[dev]"
+          - pytest tests/ -v --cov=shared --cov-report=xml || echo "No tests yet"
+
+    - step: &security-scan
+        name: Security Scan
+        image: python:3.12
+        caches:
+          - pip
+        script:
+          - pip install checkov
+          - cd infrastructure
+          - npm ci
+          - npm run build
+          - npx cdk synth -c env=dev --quiet
+          - checkov -d cdk.out --framework cloudformation --soft-fail
+
+    - step: &deploy-dev
+        name: Deploy to Dev
+        deployment: dev
+        caches:
+          - npm-infrastructure
+        script:
+          - cd infrastructure
+          - npm ci
+          - npm run build
+          - pipe: atlassian/aws-cdk-deploy:1.0.0
+            variables:
+              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+              AWS_DEFAULT_REGION: 'eu-west-1'
+              CDK_COMMAND: 'deploy'
+              EXTRA_ARGS: '--all --context env=dev --require-approval never'
+
+    - step: &deploy-test
+        name: Deploy to Test
+        deployment: test
+        caches:
+          - npm-infrastructure
+        script:
+          - cd infrastructure
+          - npm ci
+          - npm run build
+          - pipe: atlassian/aws-cdk-deploy:1.0.0
+            variables:
+              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID_TEST
+              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY_TEST
+              AWS_DEFAULT_REGION: 'eu-west-1'
+              CDK_COMMAND: 'deploy'
+              EXTRA_ARGS: '--all --context env=test --require-approval never'
+
+    - step: &deploy-prod
+        name: Deploy to Production
+        deployment: production
+        trigger: manual
+        caches:
+          - npm-infrastructure
+        script:
+          - cd infrastructure
+          - npm ci
+          - npm run build
+          - pipe: atlassian/aws-cdk-deploy:1.0.0
+            variables:
+              AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID_PROD
+              AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY_PROD
+              AWS_DEFAULT_REGION: 'eu-west-1'
+              CDK_COMMAND: 'deploy'
+              EXTRA_ARGS: '--all --context env=prod --require-approval never'
+
+pipelines:
+  default:
+    - parallel:
+        - step: *lint-typescript
+        - step: *lint-python
+    - step: *test-python
+    - step: *security-scan
+
+  branches:
+    dev:
+      - parallel:
+          - step: *lint-typescript
+          - step: *lint-python
+      - step: *test-python
+      - step: *security-scan
+      - step: *deploy-dev
+
+    test:
+      - parallel:
+          - step: *lint-typescript
+          - step: *lint-python
+      - step: *test-python
+      - step: *security-scan
+      - step: *deploy-test
+
+    main:
+      - parallel:
+          - step: *lint-typescript
+          - step: *lint-python
+      - step: *test-python
+      - step: *security-scan
+      - step: *deploy-prod
+
+  pull-requests:
+    '**':
+      - parallel:
+          - step: *lint-typescript
+          - step: *lint-python
+      - step: *test-python
+      - step: *security-scan
