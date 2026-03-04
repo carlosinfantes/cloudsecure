@@ -173,6 +173,22 @@ Resources:
               - account:GetContactInformation
             Resource: '*'
 
+          # EKS access
+          - Sid: EKSAccess
+            Effect: Allow
+            Action:
+              - eks:ListClusters
+              - eks:DescribeCluster
+              - eks:ListNodegroups
+              - eks:DescribeNodegroup
+              - eks:ListAddons
+              - eks:DescribeAddon
+              - eks:ListFargateProfiles
+              - eks:DescribeFargateProfile
+              - eks:DescribeUpdate
+              - eks:ListTagsForResource
+            Resource: '*'
+
           # Organizations read access (for organizational context)
           - Sid: OrganizationsAccess
             Effect: Allow

@@ -13,10 +13,40 @@
 
 ### 1. Install pre-commit hooks (mandatory)
 
+#### Gitleaks ####
 ```bash
-brew install pre-commit gitleaks
+# Option 1: Download the binary directly
+wget https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.21.2_linux_amd64.tar.gz
+tar -xzf gitleaks_8.21.2_linux_amd64.tar.gz
+sudo mv gitleaks /usr/local/bin/
+
+# Option 2: If you have Go installed
+go install github.com/gitleaks/gitleaks/v8@latest
+
+# Option 3: Use package manager
+brew install gitleaks
+sudo apt install gitleaks
+```
+
+Verify installation:
+```bash
+gitleaks version
+```
+
+#### pre-commit ####
+
+```bash
+brew install pre-commit # MacOS
+## On Linux use one of the methods below
+# sudo apt install pre-commit # Debian/Ubuntu
+# pip install pre-commit # PIP
 pre-commit install
 pre-commit install --hook-type pre-push
+```
+
+Verify installation:
+```bash
+pre-commit --version
 ```
 
 ### 2. Build the Lambda layer

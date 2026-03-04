@@ -234,6 +234,13 @@ def run_prowler(
         "rds_instance_no_public_access",
         # VPC
         "vpc_flow_logs_enabled",
+        # EKS
+        "eks_cluster_logging_enabled",
+        "eks_cluster_endpoint_public_access_disabled",
+        "eks_cluster_secrets_encryption_enabled",
+        "eks_cluster_uses_latest_kubernetes_version",
+        "eks_cluster_network_policy_enabled",
+        "eks_cluster_control_plane_audit_logging_enabled",
     ]
 
     # Prowler 5.x expects checks as separate arguments (not comma-separated)
@@ -574,6 +581,8 @@ def map_resource_type(prowler_type: str) -> str:
         "AwsRdsDbInstance": "AWS::RDS::DBInstance",
         "AwsCloudTrailTrail": "AWS::CloudTrail::Trail",
         "AwsKmsKey": "AWS::KMS::Key",
+        "AwsEksCluster": "AWS::EKS::Cluster",
+        "AwsEksNodegroup": "AWS::EKS::Nodegroup",
     }
 
     return type_map.get(prowler_type, f"AWS::{prowler_type}")
