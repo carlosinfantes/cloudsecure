@@ -261,6 +261,7 @@ def discover_resources(session: boto3.Session, regions: list[str]) -> dict[str, 
             "lambda_functions": 0,
             "iam_users": 0,
             "iam_roles": 0,
+            "eks_clusters": 0,
         },
     }
 
@@ -413,6 +414,43 @@ def discover_regional_resources(session: boto3.Session, region: str) -> dict[str
         logger.warning(f"Could not list Lambda functions in {region}: {e}")
         resources["lambda_functions"] = 0
 
+    # EKS clusters
+    try:
+        eks = session.client("eks", region_name=region)
+        clusters = eks.list_clusters()["clusters"]
+        eks_details = []
+        for cluster_name in clusters:
+            try:
+                detail = eks.describe_cluster(name=cluster_name)["cluster"]
+                eks_details.append(
+                    {
+                        "name": detail["name"],
+                        "arn": detail["arn"],
+                        "version": detail.get("version", "unknown"),
+                        "status": detail.get("status", "unknown"),
+                        "region": region,
+                        "endpointPublic": detail.get("resourcesVpcConfig", {}).get(
+                            "endpointPublicAccess", True
+                        ),
+                        "endpointPrivate": detail.get("resourcesVpcConfig", {}).get(
+                            "endpointPrivateAccess", False
+                        ),
+                        "logging": bool(
+                            detail.get("logging", {})
+                            .get("clusterLogging", [{}])[0]
+                            .get("enabled", False)
+                        ),
+                    }
+                )
+            except ClientError as e:
+                logger.warning(f"Could not describe EKS cluster {cluster_name} in {region}: {e}")
+        resources["eks_clusters"] = len(clusters)
+        resources["eks_cluster_details"] = eks_details
+    except ClientError as e:
+        logger.warning(f"Could not list EKS clusters in {region}: {e}")
+        resources["eks_clusters"] = 0
+        resources["eks_cluster_details"] = []
+
     return resources
 
 
@@ -519,6 +557,44 @@ def identify_security_gaps(
                 "recommendation": "Enable Macie for automated sensitive data discovery in S3 buckets.",
             }
         )
+
+    # Check EKS clusters for security gaps
+    by_region = resources.get("byRegion", {})
+    for region, region_resources in by_region.items():
+        if not isinstance(region_resources, dict):
+            continue
+        for cluster in region_resources.get("eks_cluster_details", []):
+            if cluster.get("endpointPublic", True):
+                gaps.append(
+                    {
+                        "type": "EKS_PUBLIC_ENDPOINT",
+                        "service": "EKS",
+                        "severity": "HIGH",
+                        "description": (
+                            f"EKS cluster '{cluster['name']}' in {region} has a public API endpoint."
+                        ),
+                        "recommendation": (
+                            "Disable public endpoint access and use private endpoint only, "
+                            "or restrict public access to specific CIDR blocks."
+                        ),
+                    }
+                )
+            if not cluster.get("logging", False):
+                gaps.append(
+                    {
+                        "type": "EKS_LOGGING_DISABLED",
+                        "service": "EKS",
+                        "severity": "MEDIUM",
+                        "description": (
+                            f"EKS cluster '{cluster['name']}' in {region} does not have "
+                            "control plane logging enabled."
+                        ),
+                        "recommendation": (
+                            "Enable EKS control plane logging (api, audit, authenticator, "
+                            "controllerManager, scheduler) for security monitoring."
+                        ),
+                    }
+                )
 
     return gaps
 
