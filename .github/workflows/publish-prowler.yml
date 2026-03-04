@@ -12,7 +12,7 @@ jobs:
   build-and-push:
     name: Build and push Prowler image
     runs-on: ubuntu-latest
-    environment: dockerhub
+    environment: Docker Hub
     steps:
       - uses: actions/checkout@v4
 
