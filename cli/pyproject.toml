@@ -34,9 +34,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/cloudsecure/cloudsecure"
-Repository = "https://github.com/cloudsecure/cloudsecure"
-Issues = "https://github.com/cloudsecure/cloudsecure/issues"
+Homepage = "https://github.com/carlosinfantes/cloudsecure"
+Repository = "https://github.com/carlosinfantes/cloudsecure"
+Issues = "https://github.com/carlosinfantes/cloudsecure/issues"
 
 [project.scripts]
 cloudsecure = "cloudsecure.main:cli"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # CloudSecure CLI - Standalone Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/cloudsecure/cloudsecure/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/carlosinfantes/cloudsecure/main/install.sh | bash
 set -euo pipefail
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'

@@ -49,7 +49,7 @@ cloudsecure --profile my-profile --region eu-west-1 --env prod status
 
 - **Python 3.9+**
 - **AWS credentials** with access to the CloudSecure API Gateway
-- **CloudSecure backend deployed** — see the [full repository](https://github.com/cloudsecure/cloudsecure) for infrastructure deployment instructions
+- **CloudSecure backend deployed** — see the [full repository](https://github.com/carlosinfantes/cloudsecure) for infrastructure deployment instructions
 
 ## License
 
