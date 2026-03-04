@@ -121,7 +121,7 @@ CLOUDSECURE_ENV=${CLOUDSECURE_ENV:-dev}
 
 # Prowler
 SKIP_PROWLER=false
-PROWLER_IMAGE="cloudsecure/prowler:latest"
+PROWLER_IMAGE="carlosinfantes/cloudsecure-prowler:latest"
 if [ "$HAS_DOCKER" = false ]; then
   SKIP_PROWLER=true
 else

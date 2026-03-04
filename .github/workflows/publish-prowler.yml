@@ -36,5 +36,5 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            cloudsecure/prowler:latest
-            cloudsecure/prowler:${{ steps.version.outputs.version }}
+            carlosinfantes/cloudsecure-prowler:latest
+            carlosinfantes/cloudsecure-prowler:${{ steps.version.outputs.version }}
