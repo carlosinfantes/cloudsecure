@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CloudSecure — Architecture Documentation</title>
+<style>
+  :root {
+    --aws-orange: #FF9900;
+    --aws-dark: #232F3E;
+    --aws-navy: #1B2631;
+    --accent: #FF9900;
+    --bg: #FAFBFC;
+    --card-bg: #FFFFFF;
+    --border: #E1E4E8;
+    --text: #24292E;
+    --text-secondary: #586069;
+    --code-bg: #F6F8FA;
+    --critical: #D73A49;
+    --high: #E36209;
+    --medium: #DBAB09;
+    --low: #28A745;
+    --info: #0366D6;
+    --sidebar-w: 260px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+
+  /* Sidebar */
+  nav.sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: var(--sidebar-w);
+    height: 100vh;
+    background: var(--aws-dark);
+    color: #CBD5E0;
+    overflow-y: auto;
+    z-index: 100;
+    padding: 0;
+  }
+  nav.sidebar .logo {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  nav.sidebar .logo h1 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+  nav.sidebar .logo span {
+    display: block;
+    font-size: 11px;
+    color: var(--aws-orange);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
+  }
+  nav.sidebar ul { list-style: none; padding: 12px 0; }
+  nav.sidebar li a {
+    display: block;
+    padding: 9px 20px;
+    color: #A0AEC0;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+  nav.sidebar li a:hover,
+  nav.sidebar li a.active {
+    color: #fff;
+    background: rgba(255,255,255,0.05);
+    border-left-color: var(--aws-orange);
+  }
+
+  /* Main content */
+  main {
+    margin-left: var(--sidebar-w);
+    padding: 40px 48px 80px;
+    max-width: 1000px;
+  }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(135deg, var(--aws-dark) 0%, #2C3E50 100%);
+    color: #fff;
+    padding: 48px 40px;
+    border-radius: 12px;
+    margin-bottom: 48px;
+  }
+  .hero h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .hero h1 span { color: var(--aws-orange); }
+  .hero p {
+    font-size: 16px;
+    color: #A0AEC0;
+    max-width: 600px;
+    line-height: 1.7;
+  }
+  .hero .badges {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .hero .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(255,153,0,0.15);
+    color: var(--aws-orange);
+    border: 1px solid rgba(255,153,0,0.25);
+  }
+
+  /* Sections */
+  section {
+    margin-bottom: 56px;
+    scroll-margin-top: 24px;
+  }
+  section > h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--aws-dark);
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--aws-orange);
+    margin-bottom: 24px;
+  }
+  section > h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+    margin: 24px 0 12px;
+  }
+  p { margin-bottom: 14px; }
+
+  /* Cards */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 13px;
+  }
+  thead th {
+    background: var(--aws-dark);
+    color: #fff;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  thead th:first-child { border-radius: 6px 0 0 0; }
+  thead th:last-child { border-radius: 0 6px 0 0; }
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tbody tr:hover { background: #F8F9FA; }
+  code {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 12px;
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--critical);
+  }
+
+  /* Severity badges */
+  .sev { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; color: #fff; }
+  .sev-critical { background: var(--critical); }
+  .sev-high { background: var(--high); }
+  .sev-medium { background: var(--medium); color: #333; }
+  .sev-low { background: var(--low); }
+  .sev-info { background: var(--info); }
+
+  /* Diagram containers */
+  .diagram-wrap {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 20px 0;
+    overflow-x: auto;
+  }
+  .diagram-wrap svg {
+    display: block;
+    margin: 0 auto;
+  }
+  .diagram-caption {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    font-style: italic;
+  }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* Stack labels */
+  .stack-label {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+  .stack-storage { background: #E8F5E9; color: #2E7D32; }
+  .stack-lambda { background: #FFF3E0; color: #E65100; }
+  .stack-orch { background: #E3F2FD; color: #1565C0; }
+  .stack-api { background: #F3E5F5; color: #7B1FA2; }
+
+  /* Footer */
+  footer {
+    margin-left: var(--sidebar-w);
+    padding: 24px 48px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    nav.sidebar { display: none; }
+    main, footer { margin-left: 0; }
+    main { padding: 24px 20px 60px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .hero { padding: 32px 24px; }
+  }
+
+  @media print {
+    nav.sidebar { display: none; }
+    main, footer { margin-left: 0; }
+    .hero { break-after: page; }
+    section { break-inside: avoid; }
+    .diagram-wrap { border: 1px solid #ccc; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar Navigation -->
+<nav class="sidebar">
+  <div class="logo">
+    <h1>CloudSecure</h1>
+    <span>Architecture Docs</span>
+  </div>
+  <ul>
+    <li><a href="#overview">Platform Overview</a></li>
+    <li><a href="#deployment">Deployment Architecture</a></li>
+    <li><a href="#execution">Execution Flow</a></li>
+    <li><a href="#cross-account">Cross-Account Scanning</a></li>
+    <li><a href="#information-flow">Information Flow</a></li>
+    <li><a href="#api">API Reference</a></li>
+    <li><a href="#lambdas">Lambda Functions</a></li>
+    <li><a href="#data-model">Data Model</a></li>
+    <li><a href="#security">Security & Compliance</a></li>
+  </ul>
+</nav>
+
+<!-- Main Content -->
+<main>
+
+<!-- Hero -->
+<div class="hero">
+  <h1>Cloud<span>Secure</span></h1>
+  <p>Agentless, serverless AWS security assessment platform. AI-powered analysis with professional compliance reporting.</p>
+  <div class="badges">
+    <span class="badge">Serverless</span>
+    <span class="badge">Agentless</span>
+    <span class="badge">AI-Powered</span>
+    <span class="badge">Multi-Framework</span>
+    <span class="badge">Python 3.12</span>
+    <span class="badge">AWS CDK</span>
+  </div>
+</div>
+
+<!-- 1. Platform Overview -->
+<section id="overview">
+  <h2>Platform Overview</h2>
+  <p>CloudSecure is an automated cloud security assessment platform that scans AWS accounts for misconfigurations, compliance gaps, and security risks — without deploying any agents into the target account. It leverages <strong>STS AssumeRole</strong> for secure, temporary cross-account access and <strong>AWS Bedrock Claude</strong> for AI-powered finding synthesis.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>Infrastructure</h4>
+      <p style="font-size:13px;margin:0;">AWS CDK (TypeScript) — 4 stacks deployed to a single region. All resources are KMS-encrypted, serverless, and auto-scaling.</p>
+    </div>
+    <div class="card">
+      <h4>Compute</h4>
+      <p style="font-size:13px;margin:0;">14 Lambda functions (Python 3.12) orchestrated by Step Functions. Prowler runs as a Lambda Container Image from ECR.</p>
+    </div>
+    <div class="card">
+      <h4>AI Synthesis</h4>
+      <p style="font-size:13px;margin:0;">Amazon Bedrock Claude 3.5 Sonnet correlates findings, generates executive summaries, and prioritizes remediation actions.</p>
+    </div>
+    <div class="card">
+      <h4>CLI</h4>
+      <p style="font-size:13px;margin:0;">Python CLI (<code>pip install cloudsecure</code>) with SigV4-signed API calls. Commands: <code>assess</code>, <code>status</code>, <code>report</code>.</p>
+    </div>
+  </div>
+
+  <h3>Technology Stack</h3>
+  <table>
+    <thead>
+      <tr><th>Layer</th><th>Technology</th><th>Details</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Infrastructure</td><td>AWS CDK (TypeScript)</td><td>4 stacks — Storage, Lambda, Orchestration, API</td></tr>
+      <tr><td>Compute</td><td>AWS Lambda (Python 3.12)</td><td>14 functions + shared layer (Pydantic, Jinja2)</td></tr>
+      <tr><td>Orchestration</td><td>AWS Step Functions</td><td>State machine with parallel analyzers, 2-hour timeout</td></tr>
+      <tr><td>API</td><td>API Gateway (REST)</td><td>IAM auth (SigV4), 50 RPS, CORS enabled</td></tr>
+      <tr><td>Database</td><td>DynamoDB</td><td>3 tables — assessments, findings, context (KMS encrypted)</td></tr>
+      <tr><td>Storage</td><td>S3 + KMS</td><td>Reports with lifecycle: Standard → IA → Glacier → Expire</td></tr>
+      <tr><td>AI</td><td>Amazon Bedrock</td><td>Claude 3.5 Sonnet — finding correlation & synthesis</td></tr>
+      <tr><td>Scanner</td><td>Prowler 5.17</td><td>Lambda Container Image — CIS AWS 1.4/2.0 benchmarks</td></tr>
+      <tr><td>CLI</td><td>Python click + Rich</td><td>PyPI package (<code>cloudsecure</code>), SigV4-signed requests</td></tr>
+      <tr><td>CI/CD</td><td>GitHub Actions</td><td>Secrets scan, PyPI publish on tag, Prowler image publish</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 2. Deployment Architecture -->
+<section id="deployment">
+  <h2>Deployment Architecture</h2>
+  <p>CloudSecure deploys as 4 interdependent CDK stacks. The Storage stack is the foundation, followed by Lambda, Orchestration, and API stacks that build upon each other.</p>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 880 620" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+      <defs>
+        <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/>
+        </filter>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#718096"/>
+        </marker>
+      </defs>
+
+      <!-- Storage Stack -->
+      <rect x="20" y="20" width="400" height="210" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5" filter="url(#shadow)"/>
+      <text x="36" y="48" font-size="14" font-weight="700" fill="#2E7D32">Storage Stack</text>
+      <text x="36" y="64" font-size="10" fill="#558B2F">CloudSecure-Storage-{env}</text>
+
+      <!-- KMS -->
+      <rect x="40" y="80" width="110" height="50" rx="6" fill="#fff" stroke="#4CAF50" stroke-width="1"/>
+      <text x="95" y="101" font-size="11" font-weight="600" fill="#333" text-anchor="middle">KMS Key</text>
+      <text x="95" y="117" font-size="9" fill="#666" text-anchor="middle">cloudsecure-key</text>
+
+      <!-- DynamoDB -->
+      <rect x="170" y="80" width="230" height="50" rx="6" fill="#fff" stroke="#4CAF50" stroke-width="1"/>
+      <text x="285" y="101" font-size="11" font-weight="600" fill="#333" text-anchor="middle">DynamoDB</text>
+      <text x="285" y="117" font-size="9" fill="#666" text-anchor="middle">assessments | findings | context</text>
+
+      <!-- S3 -->
+      <rect x="40" y="148" width="360" height="50" rx="6" fill="#fff" stroke="#4CAF50" stroke-width="1"/>
+      <text x="220" y="169" font-size="11" font-weight="600" fill="#333" text-anchor="middle">S3 Reports Bucket</text>
+      <text x="220" y="185" font-size="9" fill="#666" text-anchor="middle">cloudsecure-reports-{account}-{env} | KMS encrypted | Lifecycle: Standard → IA → Glacier</text>
+
+      <!-- Lambda Stack -->
+      <rect x="20" y="260" width="840" height="180" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5" filter="url(#shadow)"/>
+      <text x="36" y="288" font-size="14" font-weight="700" fill="#E65100">Lambda Stack</text>
+      <text x="36" y="304" font-size="10" fill="#BF360C">CloudSecure-Lambda-{env}</text>
+
+      <!-- Shared Layer -->
+      <rect x="40" y="316" width="130" height="44" rx="6" fill="#fff" stroke="#FF9800" stroke-width="1"/>
+      <text x="105" y="335" font-size="10" font-weight="600" fill="#333" text-anchor="middle">Shared Layer</text>
+      <text x="105" y="349" font-size="9" fill="#666" text-anchor="middle">Pydantic, Jinja2</text>
+
+      <!-- Analyzers -->
+      <rect x="190" y="316" width="230" height="44" rx="6" fill="#fff" stroke="#FF9800" stroke-width="1"/>
+      <text x="305" y="335" font-size="10" font-weight="600" fill="#333" text-anchor="middle">5 Analyzers</text>
+      <text x="305" y="349" font-size="9" fill="#666" text-anchor="middle">IAM | Network | S3 | Encryption | CloudTrail</text>
+
+      <!-- Prowler -->
+      <rect x="440" y="316" width="120" height="44" rx="6" fill="#fff" stroke="#FF9800" stroke-width="1"/>
+      <text x="500" y="335" font-size="10" font-weight="600" fill="#333" text-anchor="middle">Prowler</text>
+      <text x="500" y="349" font-size="9" fill="#666" text-anchor="middle">ECR Container</text>
+
+      <!-- Other Lambdas -->
+      <rect x="580" y="316" width="260" height="44" rx="6" fill="#fff" stroke="#FF9800" stroke-width="1"/>
+      <text x="710" y="335" font-size="10" font-weight="600" fill="#333" text-anchor="middle">Core Functions</text>
+      <text x="710" y="349" font-size="9" fill="#666" text-anchor="middle">Validate | Discover | Aggregate | AI | Report</text>
+
+      <!-- API Handlers -->
+      <rect x="40" y="376" width="800" height="44" rx="6" fill="#fff" stroke="#FF9800" stroke-width="1"/>
+      <text x="440" y="395" font-size="10" font-weight="600" fill="#333" text-anchor="middle">4 API Handlers</text>
+      <text x="440" y="409" font-size="9" fill="#666" text-anchor="middle">start-assessment | get-assessment | list-assessments | get-report</text>
+
+      <!-- Orchestration Stack -->
+      <rect x="460" y="20" width="400" height="100" rx="8" fill="#E3F2FD" stroke="#1E88E5" stroke-width="1.5" filter="url(#shadow)"/>
+      <text x="476" y="48" font-size="14" font-weight="700" fill="#1565C0">Orchestration Stack</text>
+      <text x="476" y="64" font-size="10" fill="#1565C0">CloudSecure-Orchestration-{env}</text>
+      <rect x="480" y="76" width="360" height="30" rx="6" fill="#fff" stroke="#1E88E5" stroke-width="1"/>
+      <text x="660" y="96" font-size="10" font-weight="600" fill="#333" text-anchor="middle">Step Functions State Machine — cloudsecure-assessment-{env}</text>
+
+      <!-- API Stack -->
+      <rect x="460" y="140" width="400" height="90" rx="8" fill="#F3E5F5" stroke="#8E24AA" stroke-width="1.5" filter="url(#shadow)"/>
+      <text x="476" y="168" font-size="14" font-weight="700" fill="#7B1FA2">API Stack</text>
+      <text x="476" y="184" font-size="10" fill="#6A1B9A">CloudSecure-API-{env}</text>
+      <rect x="480" y="196" width="360" height="24" rx="6" fill="#fff" stroke="#8E24AA" stroke-width="1"/>
+      <text x="660" y="213" font-size="10" font-weight="600" fill="#333" text-anchor="middle">API Gateway (IAM Auth) — cloudsecure-api-{env}</text>
+
+      <!-- Dependency arrows -->
+      <line x1="220" y1="230" x2="220" y2="258" stroke="#718096" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4"/>
+      <line x1="660" y1="120" x2="660" y2="138" stroke="#718096" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4"/>
+      <line x1="660" y1="230" x2="660" y2="258" stroke="#718096" stroke-width="1.5" marker-end="url(#arrow)" stroke-dasharray="4"/>
+
+      <!-- Legend -->
+      <rect x="20" y="470" width="840" height="140" rx="8" fill="#fff" stroke="var(--border)" stroke-width="1"/>
+      <text x="36" y="496" font-size="12" font-weight="700" fill="#333">AWS Resources Summary</text>
+      <text x="36" y="520" font-size="11" fill="#666"><tspan font-weight="600" fill="#333">DynamoDB:</tspan> 3 tables (assessments, findings, context) — KMS encrypted, TTL 90 days, on-demand billing</text>
+      <text x="36" y="540" font-size="11" fill="#666"><tspan font-weight="600" fill="#333">S3:</tspan> cloudsecure-reports-{account}-{env} — KMS encrypted, versioned, lifecycle to Glacier at 90 days</text>
+      <text x="36" y="560" font-size="11" fill="#666"><tspan font-weight="600" fill="#333">Lambda:</tspan> 14 functions (Python 3.12) — shared layer with Pydantic, Jinja2, boto3, analyzers</text>
+      <text x="36" y="580" font-size="11" fill="#666"><tspan font-weight="600" fill="#333">Step Functions:</tspan> 1 state machine, 13 states, 2-hour timeout, full execution logging</text>
+      <text x="36" y="600" font-size="11" fill="#666"><tspan font-weight="600" fill="#333">API Gateway:</tspan> REST API, IAM authorization (SigV4), 50 RPS / 100 burst, CloudWatch logging</text>
+    </svg>
+    <div class="diagram-caption">Figure 1 — CDK Stack Architecture and AWS Resource Layout</div>
+  </div>
+</section>
+
+<!-- 3. Execution Flow -->
+<section id="execution">
+  <h2>Assessment Execution Flow</h2>
+  <p>Each assessment is orchestrated by an AWS Step Functions state machine. The flow validates cross-account access, discovers resources, runs 7 analyzers in parallel, aggregates findings, applies AI synthesis, and generates reports.</p>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 880 760" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#4A5568"/>
+        </marker>
+      </defs>
+
+      <!-- Start -->
+      <circle cx="440" cy="30" r="16" fill="#4A5568"/>
+      <text x="440" y="35" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">S</text>
+      <line x1="440" y1="46" x2="440" y2="68" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Validate Role -->
+      <rect x="320" y="70" width="240" height="50" rx="8" fill="#E3F2FD" stroke="#1E88E5" stroke-width="1.5"/>
+      <text x="440" y="92" font-size="12" font-weight="700" fill="#1565C0" text-anchor="middle">Validate Role</text>
+      <text x="440" y="108" font-size="10" fill="#5C6BC0" text-anchor="middle">STS AssumeRole + permission checks</text>
+      <text x="570" y="92" font-size="9" fill="#999">5-10%</text>
+      <line x1="440" y1="120" x2="440" y2="142" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Error path from validate -->
+      <line x1="320" y1="95" x2="180" y2="95" stroke="#D73A49" stroke-width="1" stroke-dasharray="4" marker-end="url(#arr2)"/>
+      <rect x="60" y="78" width="120" height="34" rx="6" fill="#FEEEF0" stroke="#D73A49" stroke-width="1"/>
+      <text x="120" y="100" font-size="10" font-weight="600" fill="#D73A49" text-anchor="middle">FAILED</text>
+
+      <!-- Discover Resources -->
+      <rect x="320" y="144" width="240" height="50" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
+      <text x="440" y="166" font-size="12" font-weight="700" fill="#2E7D32" text-anchor="middle">Discover Resources</text>
+      <text x="440" y="182" font-size="10" fill="#388E3C" text-anchor="middle">Multi-region enumeration, security services</text>
+      <text x="570" y="166" font-size="9" fill="#999">15%</text>
+      <line x1="440" y1="194" x2="440" y2="220" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Parallel Analyzers Box -->
+      <rect x="30" y="222" width="820" height="260" rx="10" fill="#FFFDE7" stroke="#FBC02D" stroke-width="2" stroke-dasharray="6,3"/>
+      <text x="50" y="248" font-size="13" font-weight="700" fill="#F57F17">Parallel Execution</text>
+      <text x="800" y="248" font-size="9" fill="#999" text-anchor="end">20-70%</text>
+
+      <!-- 7 Analyzer boxes -->
+      <rect x="50" y="262" width="108" height="60" rx="6" fill="#fff" stroke="#FBC02D" stroke-width="1"/>
+      <text x="104" y="284" font-size="10" font-weight="600" fill="#333" text-anchor="middle">IAM</text>
+      <text x="104" y="298" font-size="8" fill="#666" text-anchor="middle">MFA, credentials</text>
+      <text x="104" y="310" font-size="8" fill="#666" text-anchor="middle">privileges, root</text>
+
+      <rect x="168" y="262" width="108" height="60" rx="6" fill="#fff" stroke="#FBC02D" stroke-width="1"/>
+      <text x="222" y="284" font-size="10" font-weight="600" fill="#333" text-anchor="middle">Network</text>
+      <text x="222" y="298" font-size="8" fill="#666" text-anchor="middle">SGs, VPCs</text>
+      <text x="222" y="310" font-size="8" fill="#666" text-anchor="middle">Flow Logs, public</text>
+
+      <rect x="286" y="262" width="108" height="60" rx="6" fill="#fff" stroke="#FBC02D" stroke-width="1"/>
+      <text x="340" y="284" font-size="10" font-weight="600" fill="#333" text-anchor="middle">S3</text>
+      <text x="340" y="298" font-size="8" fill="#666" text-anchor="middle">Public, encryption</text>
+      <text x="340" y="310" font-size="8" fill="#666" text-anchor="middle">logging, versioning</text>
+
+      <rect x="404" y="262" width="108" height="60" rx="6" fill="#fff" stroke="#FBC02D" stroke-width="1"/>
+      <text x="458" y="284" font-size="10" font-weight="600" fill="#333" text-anchor="middle">Encryption</text>
+      <text x="458" y="298" font-size="8" fill="#666" text-anchor="middle">EBS, RDS, EFS</text>
+      <text x="458" y="310" font-size="8" fill="#666" text-anchor="middle">at-rest checks</text>
+
+      <rect x="522" y="262" width="108" height="60" rx="6" fill="#fff" stroke="#FBC02D" stroke-width="1"/>
+      <text x="576" y="284" font-size="10" font-weight="600" fill="#333" text-anchor="middle">CloudTrail</text>
+      <text x="576" y="298" font-size="8" fill="#666" text-anchor="middle">Trail config</text>
+      <text x="576" y="310" font-size="8" fill="#666" text-anchor="middle">root usage, filters</text>
+
+      <rect x="640" y="262" width="100" height="60" rx="6" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
+      <text x="690" y="284" font-size="10" font-weight="600" fill="#E65100" text-anchor="middle">Prowler</text>
+      <text x="690" y="298" font-size="8" fill="#666" text-anchor="middle">CIS 1.4/2.0</text>
+      <text x="690" y="310" font-size="8" fill="#666" text-anchor="middle">(optional)</text>
+
+      <rect x="750" y="262" width="90" height="60" rx="6" fill="#fff" stroke="#FBC02D" stroke-width="1"/>
+      <text x="795" y="284" font-size="10" font-weight="600" fill="#333" text-anchor="middle">Native</text>
+      <text x="795" y="298" font-size="8" fill="#666" text-anchor="middle">SecurityHub</text>
+      <text x="795" y="310" font-size="8" fill="#666" text-anchor="middle">GuardDuty, Config</text>
+
+      <!-- Lambda specs row -->
+      <rect x="50" y="340" width="790" height="36" rx="6" fill="#F5F5F5" stroke="#E0E0E0" stroke-width="1"/>
+      <text x="440" y="358" font-size="10" fill="#666" text-anchor="middle">
+        <tspan font-weight="600">Analyzers:</tspan> 512 MB, 10 min timeout  |
+        <tspan font-weight="600">Prowler:</tspan> 3072 MB, 15 min, 1 GB ephemeral  |
+        <tspan font-weight="600">All:</tspan> Python 3.12
+      </text>
+
+      <!-- Converging arrows from parallel -->
+      <rect x="50" y="394" width="790" height="42" rx="6" fill="#fff" stroke="#E0E0E0" stroke-width="1"/>
+      <text x="440" y="410" font-size="10" fill="#999" text-anchor="middle">Each analyzer returns findings in a standardized schema</text>
+      <text x="440" y="426" font-size="10" fill="#999" text-anchor="middle">Errors in individual analyzers do not stop the overall assessment</text>
+
+      <!-- Arrows down -->
+      <line x1="440" y1="452" x2="440" y2="464" stroke="#4A5568" stroke-width="1.5"/>
+
+      <!-- End parallel box at 450 -->
+
+      <!-- Aggregate -->
+      <line x1="440" y1="482" x2="440" y2="496" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+      <rect x="310" y="498" width="260" height="50" rx="8" fill="#E8EAF6" stroke="#5C6BC0" stroke-width="1.5"/>
+      <text x="440" y="520" font-size="12" font-weight="700" fill="#283593" text-anchor="middle">Aggregate Findings</text>
+      <text x="440" y="536" font-size="10" fill="#5C6BC0" text-anchor="middle">Deduplicate, count by severity</text>
+      <text x="580" y="520" font-size="9" fill="#999">75%</text>
+      <line x1="440" y1="548" x2="440" y2="570" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- AI Synthesis -->
+      <rect x="310" y="572" width="260" height="50" rx="8" fill="#FCE4EC" stroke="#E91E63" stroke-width="1.5"/>
+      <text x="440" y="594" font-size="12" font-weight="700" fill="#AD1457" text-anchor="middle">AI Synthesis</text>
+      <text x="440" y="610" font-size="10" fill="#C2185B" text-anchor="middle">Bedrock Claude 3.5 Sonnet</text>
+      <text x="580" y="594" font-size="9" fill="#999">92-95%</text>
+
+      <!-- Bedrock label -->
+      <rect x="620" y="578" width="190" height="38" rx="6" fill="#FFF" stroke="#E91E63" stroke-width="1" stroke-dasharray="3"/>
+      <text x="715" y="594" font-size="9" fill="#AD1457" text-anchor="middle">Risk score, executive summary</text>
+      <text x="715" y="608" font-size="9" fill="#AD1457" text-anchor="middle">remediation priorities, patterns</text>
+
+      <line x1="440" y1="622" x2="440" y2="644" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Generate Report -->
+      <rect x="310" y="646" width="260" height="50" rx="8" fill="#E0F2F1" stroke="#009688" stroke-width="1.5"/>
+      <text x="440" y="668" font-size="12" font-weight="700" fill="#00695C" text-anchor="middle">Generate Report</text>
+      <text x="440" y="684" font-size="10" fill="#00796B" text-anchor="middle">HTML, JSON, CSV → S3</text>
+      <text x="580" y="668" font-size="9" fill="#999">97-100%</text>
+      <line x1="440" y1="696" x2="440" y2="718" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr2)"/>
+
+      <!-- Complete -->
+      <circle cx="440" cy="734" r="16" fill="#4CAF50"/>
+      <text x="440" y="739" font-size="11" fill="#fff" text-anchor="middle" font-weight="700">&#10003;</text>
+      <text x="470" y="739" font-size="10" fill="#666">COMPLETED</text>
+    </svg>
+    <div class="diagram-caption">Figure 2 — Step Functions State Machine: Assessment Execution Flow</div>
+  </div>
+</section>
+
+<!-- 4. Cross-Account Scanning -->
+<section id="cross-account">
+  <h2>Cross-Account Scanning Architecture</h2>
+  <p>CloudSecure uses <strong>STS AssumeRole with ExternalId</strong> to securely access customer AWS accounts. No credentials are ever stored — only temporary session tokens are used during the assessment. Customers deploy a CloudFormation template that creates the required IAM role with read-only permissions.</p>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 880 480" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#4A5568"/>
+        </marker>
+        <marker id="arr3g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#4CAF50"/>
+        </marker>
+      </defs>
+
+      <!-- CloudSecure Platform Account -->
+      <rect x="30" y="20" width="380" height="440" rx="12" fill="#E3F2FD" stroke="#1E88E5" stroke-width="2"/>
+      <text x="50" y="50" font-size="15" font-weight="700" fill="#1565C0">CloudSecure Platform Account</text>
+      <text x="50" y="68" font-size="10" fill="#5C6BC0">Security assessment infrastructure</text>
+
+      <!-- CLI -->
+      <rect x="60" y="90" width="140" height="44" rx="6" fill="#fff" stroke="#1E88E5" stroke-width="1"/>
+      <text x="130" y="110" font-size="11" font-weight="600" fill="#333" text-anchor="middle">CLI</text>
+      <text x="130" y="124" font-size="9" fill="#666" text-anchor="middle">cloudsecure assess</text>
+
+      <!-- API GW -->
+      <rect x="60" y="160" width="140" height="44" rx="6" fill="#fff" stroke="#1E88E5" stroke-width="1"/>
+      <text x="130" y="180" font-size="11" font-weight="600" fill="#333" text-anchor="middle">API Gateway</text>
+      <text x="130" y="194" font-size="9" fill="#666" text-anchor="middle">SigV4 Auth</text>
+
+      <!-- Step Functions -->
+      <rect x="60" y="230" width="140" height="44" rx="6" fill="#fff" stroke="#1E88E5" stroke-width="1"/>
+      <text x="130" y="250" font-size="11" font-weight="600" fill="#333" text-anchor="middle">Step Functions</text>
+      <text x="130" y="264" font-size="9" fill="#666" text-anchor="middle">Orchestrator</text>
+
+      <!-- Validate Role Lambda -->
+      <rect x="60" y="300" width="140" height="44" rx="6" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
+      <text x="130" y="320" font-size="11" font-weight="700" fill="#E65100" text-anchor="middle">Validate Role</text>
+      <text x="130" y="334" font-size="9" fill="#BF360C" text-anchor="middle">STS AssumeRole</text>
+
+      <!-- Analyzers -->
+      <rect x="60" y="370" width="320" height="70" rx="6" fill="#FFFDE7" stroke="#FBC02D" stroke-width="1"/>
+      <text x="220" y="394" font-size="11" font-weight="600" fill="#333" text-anchor="middle">Analyzer Lambdas</text>
+      <text x="220" y="412" font-size="9" fill="#666" text-anchor="middle">IAM | Network | S3 | Encryption | CloudTrail | Prowler | Native</text>
+      <text x="220" y="428" font-size="9" fill="#999" text-anchor="middle">Use temporary credentials from STS</text>
+
+      <!-- Arrows on left side -->
+      <line x1="130" y1="134" x2="130" y2="158" stroke="#4A5568" stroke-width="1.2" marker-end="url(#arr3)"/>
+      <line x1="130" y1="204" x2="130" y2="228" stroke="#4A5568" stroke-width="1.2" marker-end="url(#arr3)"/>
+      <line x1="130" y1="274" x2="130" y2="298" stroke="#4A5568" stroke-width="1.2" marker-end="url(#arr3)"/>
+      <line x1="130" y1="344" x2="130" y2="368" stroke="#4A5568" stroke-width="1.2" marker-end="url(#arr3)"/>
+
+      <!-- Customer Account -->
+      <rect x="480" y="20" width="370" height="440" rx="12" fill="#FFF3E0" stroke="#FF9800" stroke-width="2"/>
+      <text x="500" y="50" font-size="15" font-weight="700" fill="#E65100">Customer AWS Account</text>
+      <text x="500" y="68" font-size="10" fill="#BF360C">Target account being assessed</text>
+
+      <!-- IAM Role -->
+      <rect x="510" y="130" width="310" height="100" rx="8" fill="#fff" stroke="#FF9800" stroke-width="1.5"/>
+      <text x="665" y="155" font-size="12" font-weight="700" fill="#E65100" text-anchor="middle">CloudSecureAssessmentRole</text>
+      <text x="665" y="175" font-size="10" fill="#666" text-anchor="middle">Trust: CloudSecure account + ExternalId</text>
+      <text x="665" y="195" font-size="10" fill="#666" text-anchor="middle">Policies: ReadOnlyAccess + SecurityAudit</text>
+      <text x="665" y="215" font-size="9" fill="#999" text-anchor="middle">Created via onboarding CloudFormation template</text>
+
+      <!-- AWS Resources -->
+      <rect x="510" y="260" width="145" height="60" rx="6" fill="#fff" stroke="#E0E0E0" stroke-width="1"/>
+      <text x="582" y="284" font-size="10" font-weight="600" fill="#333" text-anchor="middle">EC2, VPC</text>
+      <text x="582" y="300" font-size="9" fill="#666" text-anchor="middle">Instances, SGs</text>
+
+      <rect x="675" y="260" width="145" height="60" rx="6" fill="#fff" stroke="#E0E0E0" stroke-width="1"/>
+      <text x="747" y="284" font-size="10" font-weight="600" fill="#333" text-anchor="middle">S3, IAM</text>
+      <text x="747" y="300" font-size="9" fill="#666" text-anchor="middle">Buckets, Roles</text>
+
+      <rect x="510" y="340" width="145" height="60" rx="6" fill="#fff" stroke="#E0E0E0" stroke-width="1"/>
+      <text x="582" y="364" font-size="10" font-weight="600" fill="#333" text-anchor="middle">CloudTrail</text>
+      <text x="582" y="380" font-size="9" fill="#666" text-anchor="middle">Trails, Events</text>
+
+      <rect x="675" y="340" width="145" height="60" rx="6" fill="#fff" stroke="#E0E0E0" stroke-width="1"/>
+      <text x="747" y="364" font-size="10" font-weight="600" fill="#333" text-anchor="middle">Security Services</text>
+      <text x="747" y="380" font-size="9" fill="#666" text-anchor="middle">GuardDuty, Hub</text>
+
+      <!-- STS AssumeRole Arrow -->
+      <line x1="200" y1="322" x2="508" y2="170" stroke="#4CAF50" stroke-width="2" marker-end="url(#arr3g)"/>
+      <rect x="280" y="220" width="200" height="52" rx="6" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
+      <text x="380" y="240" font-size="11" font-weight="700" fill="#2E7D32" text-anchor="middle">STS AssumeRole</text>
+      <text x="380" y="256" font-size="9" fill="#388E3C" text-anchor="middle">+ ExternalId (confused deputy)</text>
+      <text x="380" y="268" font-size="8" fill="#66BB6A" text-anchor="middle">Temporary credentials, 1h expiry</text>
+
+      <!-- Scan arrow -->
+      <line x1="380" y1="400" x2="508" y2="320" stroke="#FF9800" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#arr3)"/>
+      <text x="420" y="418" font-size="9" fill="#E65100">Read-only scan</text>
+
+      <!-- No credentials stored -->
+      <rect x="250" y="94" width="140" height="26" rx="13" fill="#FFEBEE" stroke="#E57373" stroke-width="1"/>
+      <text x="320" y="112" font-size="10" font-weight="600" fill="#C62828" text-anchor="middle">No credentials stored</text>
+    </svg>
+    <div class="diagram-caption">Figure 3 — Cross-Account Scanning: STS AssumeRole with ExternalId</div>
+  </div>
+
+  <h3>Onboarding Process</h3>
+  <div class="card">
+    <ol style="font-size:13px; padding-left:20px; line-height:2;">
+      <li>Customer deploys <code>onboarding/cloudformation/cloudsecure-role.yaml</code> in their AWS account</li>
+      <li>CloudFormation creates <code>CloudSecureAssessmentRole</code> with ReadOnlyAccess + SecurityAudit</li>
+      <li>Trust policy specifies the CloudSecure platform account and a unique ExternalId</li>
+      <li>Customer provides the Role ARN and ExternalId to CloudSecure via CLI or API</li>
+      <li>CloudSecure validates access by assuming the role and testing permissions</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 5. Information Flow -->
+<section id="information-flow">
+  <h2>Information Flow</h2>
+  <p>Data flows from the CLI through API Gateway, gets processed by Step Functions, stored in DynamoDB and S3, and is returned as presigned report URLs.</p>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 880 540" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">
+      <defs>
+        <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#4A5568"/>
+        </marker>
+        <marker id="arr4o" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#FF9900"/>
+        </marker>
+      </defs>
+
+      <!-- User / CLI -->
+      <rect x="30" y="30" width="120" height="60" rx="8" fill="#EDE7F6" stroke="#7E57C2" stroke-width="1.5"/>
+      <text x="90" y="56" font-size="12" font-weight="700" fill="#4527A0" text-anchor="middle">User / CLI</text>
+      <text x="90" y="74" font-size="9" fill="#7E57C2" text-anchor="middle">cloudsecure CLI</text>
+
+      <!-- Arrow to API GW -->
+      <line x1="150" y1="60" x2="220" y2="60" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr4)"/>
+      <text x="185" y="52" font-size="8" fill="#999" text-anchor="middle">SigV4</text>
+
+      <!-- API Gateway -->
+      <rect x="222" y="30" width="140" height="60" rx="8" fill="#F3E5F5" stroke="#8E24AA" stroke-width="1.5"/>
+      <text x="292" y="56" font-size="12" font-weight="700" fill="#6A1B9A" text-anchor="middle">API Gateway</text>
+      <text x="292" y="74" font-size="9" fill="#8E24AA" text-anchor="middle">IAM Authorization</text>
+
+      <!-- Arrow to API Handlers -->
+      <line x1="362" y1="60" x2="432" y2="60" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr4)"/>
+
+      <!-- API Handlers -->
+      <rect x="434" y="30" width="140" height="60" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
+      <text x="504" y="56" font-size="12" font-weight="700" fill="#E65100" text-anchor="middle">API Handlers</text>
+      <text x="504" y="74" font-size="9" fill="#BF360C" text-anchor="middle">4 Lambda functions</text>
+
+      <!-- Arrow to Step Functions -->
+      <line x1="574" y1="60" x2="644" y2="60" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr4)"/>
+      <text x="609" y="52" font-size="8" fill="#999" text-anchor="middle">start</text>
+
+      <!-- Step Functions -->
+      <rect x="646" y="30" width="200" height="60" rx="8" fill="#E3F2FD" stroke="#1E88E5" stroke-width="1.5"/>
+      <text x="746" y="56" font-size="12" font-weight="700" fill="#1565C0" text-anchor="middle">Step Functions</text>
+      <text x="746" y="74" font-size="9" fill="#5C6BC0" text-anchor="middle">Assessment Orchestrator</text>
+
+      <!-- Arrow down to analyzers -->
+      <line x1="746" y1="90" x2="746" y2="130" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr4)"/>
+
+      <!-- Analyzers -->
+      <rect x="606" y="132" width="240" height="50" rx="8" fill="#FFFDE7" stroke="#FBC02D" stroke-width="1.5"/>
+      <text x="726" y="154" font-size="12" font-weight="700" fill="#F57F17" text-anchor="middle">7 Analyzers (Parallel)</text>
+      <text x="726" y="170" font-size="9" fill="#F9A825" text-anchor="middle">Scan customer account resources</text>
+
+      <!-- Arrow to customer account -->
+      <line x1="726" y1="182" x2="726" y2="210" stroke="#FF9900" stroke-width="1.5" stroke-dasharray="5" marker-end="url(#arr4o)"/>
+
+      <!-- Customer Account -->
+      <rect x="636" y="212" width="180" height="40" rx="8" fill="#FFF3E0" stroke="#FF9800" stroke-width="1.5"/>
+      <text x="726" y="237" font-size="11" font-weight="600" fill="#E65100" text-anchor="middle">Customer AWS Account</text>
+
+      <!-- DynamoDB (center) -->
+      <rect x="270" y="160" width="240" height="90" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
+      <text x="390" y="186" font-size="13" font-weight="700" fill="#2E7D32" text-anchor="middle">DynamoDB</text>
+      <text x="390" y="206" font-size="10" fill="#388E3C" text-anchor="middle">assessments — status, progress, counts</text>
+      <text x="390" y="222" font-size="10" fill="#388E3C" text-anchor="middle">findings — security findings by severity</text>
+      <text x="390" y="238" font-size="10" fill="#388E3C" text-anchor="middle">context — CRF entities (Phase 2)</text>
+
+      <!-- Arrow from API Handlers to DynamoDB -->
+      <line x1="504" y1="90" x2="430" y2="158" stroke="#4A5568" stroke-width="1.2" marker-end="url(#arr4)"/>
+      <text x="480" y="120" font-size="8" fill="#999">read/write</text>
+
+      <!-- Arrow from Analyzers to DynamoDB -->
+      <line x1="606" y1="157" x2="512" y2="200" stroke="#4A5568" stroke-width="1.2" marker-end="url(#arr4)"/>
+      <text x="570" y="172" font-size="8" fill="#999">findings</text>
+
+      <!-- AI Synthesis -->
+      <rect x="60" y="290" width="200" height="60" rx="8" fill="#FCE4EC" stroke="#E91E63" stroke-width="1.5"/>
+      <text x="160" y="316" font-size="12" font-weight="700" fill="#AD1457" text-anchor="middle">AI Synthesis</text>
+      <text x="160" y="334" font-size="9" fill="#C2185B" text-anchor="middle">Bedrock Claude 3.5 Sonnet</text>
+
+      <!-- Arrow from DynamoDB to AI -->
+      <line x1="310" y1="250" x2="200" y2="288" stroke="#4A5568" stroke-width="1.2" marker-end="url(#arr4)"/>
+      <text x="270" y="270" font-size="8" fill="#999">findings</text>
+
+      <!-- Bedrock -->
+      <rect x="60" y="374" width="200" height="44" rx="6" fill="#fff" stroke="#E91E63" stroke-width="1" stroke-dasharray="3"/>
+      <text x="160" y="394" font-size="10" fill="#AD1457" text-anchor="middle">Amazon Bedrock</text>
+      <text x="160" y="408" font-size="9" fill="#C2185B" text-anchor="middle">Risk scores, executive summary</text>
+      <line x1="160" y1="350" x2="160" y2="372" stroke="#E91E63" stroke-width="1.2" marker-end="url(#arr4)"/>
+
+      <!-- Arrow from AI back to DynamoDB -->
+      <line x1="260" y1="310" x2="310" y2="240" stroke="#4CAF50" stroke-width="1.2" marker-end="url(#arr4)"/>
+      <text x="300" y="290" font-size="8" fill="#4CAF50">enriched</text>
+
+      <!-- Report Generator -->
+      <rect x="360" y="310" width="200" height="60" rx="8" fill="#E0F2F1" stroke="#009688" stroke-width="1.5"/>
+      <text x="460" y="336" font-size="12" font-weight="700" fill="#00695C" text-anchor="middle">Report Generator</text>
+      <text x="460" y="354" font-size="9" fill="#00796B" text-anchor="middle">HTML, JSON, CSV via Jinja2</text>
+
+      <!-- Arrow from DynamoDB to Report -->
+      <line x1="390" y1="250" x2="420" y2="308" stroke="#4A5568" stroke-width="1.2" marker-end="url(#arr4)"/>
+      <text x="390" y="282" font-size="8" fill="#999">data</text>
+
+      <!-- S3 -->
+      <rect x="360" y="410" width="200" height="80" rx="8" fill="#E8F5E9" stroke="#4CAF50" stroke-width="1.5"/>
+      <text x="460" y="436" font-size="13" font-weight="700" fill="#2E7D32" text-anchor="middle">S3 Reports Bucket</text>
+      <text x="460" y="454" font-size="10" fill="#388E3C" text-anchor="middle">KMS encrypted</text>
+      <text x="460" y="470" font-size="9" fill="#66BB6A" text-anchor="middle">Standard → IA (30d) → Glacier (90d)</text>
+      <text x="460" y="484" font-size="9" fill="#66BB6A" text-anchor="middle">→ Expire (365d)</text>
+
+      <!-- Arrow from Report to S3 -->
+      <line x1="460" y1="370" x2="460" y2="408" stroke="#4A5568" stroke-width="1.5" marker-end="url(#arr4)"/>
+      <text x="478" y="392" font-size="8" fill="#999">upload</text>
+
+      <!-- Presigned URL back to user -->
+      <path d="M 360 450 Q 90 450 90 90" stroke="#7E57C2" stroke-width="1.5" fill="none" stroke-dasharray="6" marker-end="url(#arr4)"/>
+      <rect x="60" y="450" width="140" height="28" rx="14" fill="#EDE7F6" stroke="#7E57C2" stroke-width="1"/>
+      <text x="130" y="469" font-size="9" font-weight="600" fill="#4527A0" text-anchor="middle">Presigned URL (1h)</text>
+
+      <!-- KMS -->
+      <rect x="640" y="410" width="160" height="50" rx="8" fill="#FFEBEE" stroke="#E57373" stroke-width="1.5"/>
+      <text x="720" y="434" font-size="11" font-weight="700" fill="#C62828" text-anchor="middle">KMS</text>
+      <text x="720" y="450" font-size="9" fill="#E57373" text-anchor="middle">Customer-managed key</text>
+
+      <!-- KMS arrows -->
+      <line x1="640" y1="435" x2="562" y2="435" stroke="#E57373" stroke-width="1" stroke-dasharray="3"/>
+      <line x1="640" y1="445" x2="562" y2="215" stroke="#E57373" stroke-width="1" stroke-dasharray="3"/>
+    </svg>
+    <div class="diagram-caption">Figure 4 — Information Flow: Data Movement Through the CloudSecure Platform</div>
+  </div>
+</section>
+
+<!-- 6. API Reference -->
+<section id="api">
+  <h2>API Reference</h2>
+  <p>All endpoints require <strong>IAM authentication</strong> (SigV4 signed requests). The API is deployed as a regional REST API Gateway with CloudWatch logging enabled.</p>
+
+  <div class="card" style="padding:16px;">
+    <div class="grid-3" style="margin-bottom:12px;">
+      <div><strong style="font-size:12px;">Authentication</strong><br><span style="font-size:13px;">IAM (SigV4)</span></div>
+      <div><strong style="font-size:12px;">Throttling</strong><br><span style="font-size:13px;">50 RPS / 100 burst</span></div>
+      <div><strong style="font-size:12px;">Region</strong><br><span style="font-size:13px;">eu-west-1</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Method</th><th>Endpoint</th><th>Description</th><th>Auth</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code style="background:#E8F5E9;color:#2E7D32;">POST</code></td>
+        <td><code>/assessments</code></td>
+        <td>Start a new security assessment. Body: <code>{accountId, roleArn, externalId}</code>. Returns assessment ID and starts Step Functions execution.</td>
+        <td>IAM</td>
+      </tr>
+      <tr>
+        <td><code style="background:#E3F2FD;color:#1565C0;">GET</code></td>
+        <td><code>/assessments</code></td>
+        <td>List all assessments with pagination. Returns summary of each assessment including status and finding counts.</td>
+        <td>IAM</td>
+      </tr>
+      <tr>
+        <td><code style="background:#E3F2FD;color:#1565C0;">GET</code></td>
+        <td><code>/assessments/{id}</code></td>
+        <td>Get assessment details including status, progress (0-100), severity counts, risk score, and completion time.</td>
+        <td>IAM</td>
+      </tr>
+      <tr>
+        <td><code style="background:#E3F2FD;color:#1565C0;">GET</code></td>
+        <td><code>/assessments/{id}/report</code></td>
+        <td>Get presigned S3 URL for downloading the report. Query: <code>?format=html|json|csv</code>. URL expires in 1 hour.</td>
+        <td>IAM</td>
+      </tr>
+      <tr>
+        <td><code style="background:#E3F2FD;color:#1565C0;">GET</code></td>
+        <td><code>/health</code></td>
+        <td>Health check endpoint. Returns <code>{status, version, environment}</code>.</td>
+        <td>None</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Request / Response Examples</h3>
+  <div class="grid-2">
+    <div class="card">
+      <h4>POST /assessments (Request)</h4>
+      <pre style="font-size:12px; background:var(--code-bg); padding:12px; border-radius:6px; overflow-x:auto; margin:0;"><code>{
+  "accountId": "123456789012",
+  "roleArn": "arn:aws:iam::123456789012:role/CloudSecure",
+  "externalId": "unique-external-id",
+  "scope": ["all"],
+  "complianceFrameworks": ["CIS-AWS-2.0"]
+}</code></pre>
+    </div>
+    <div class="card">
+      <h4>GET /assessments/{id} (Response)</h4>
+      <pre style="font-size:12px; background:var(--code-bg); padding:12px; border-radius:6px; overflow-x:auto; margin:0;"><code>{
+  "assessmentId": "a1b2c3d4-...",
+  "status": "COMPLETED",
+  "progress": 100,
+  "findingsCount": 64,
+  "criticalCount": 0,
+  "highCount": 2,
+  "riskScore": 22,
+  "riskLevel": "LOW"
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- 7. Lambda Functions -->
+<section id="lambdas">
+  <h2>Lambda Functions</h2>
+  <p>14 Lambda functions handle all compute. All share a common layer with Pydantic models, Jinja2 templates, and AWS client utilities.</p>
+
+  <table>
+    <thead>
+      <tr><th>Function</th><th>Runtime</th><th>Memory</th><th>Timeout</th><th>Purpose</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>validate-role</code></td><td>Python 3.12</td><td>256 MB</td><td>2 min</td><td>Verify STS AssumeRole permissions</td></tr>
+      <tr><td><code>discovery-module</code></td><td>Python 3.12</td><td>512 MB</td><td>10 min</td><td>Multi-region resource enumeration</td></tr>
+      <tr><td><code>iam-analyzer</code></td><td>Python 3.12</td><td>512 MB</td><td>10 min</td><td>MFA, unused credentials, overprivileged roles</td></tr>
+      <tr><td><code>network-analyzer</code></td><td>Python 3.12</td><td>512 MB</td><td>10 min</td><td>Security groups, VPCs, public exposure</td></tr>
+      <tr><td><code>s3-analyzer</code></td><td>Python 3.12</td><td>512 MB</td><td>10 min</td><td>Public buckets, encryption, logging</td></tr>
+      <tr><td><code>encryption-analyzer</code></td><td>Python 3.12</td><td>512 MB</td><td>10 min</td><td>EBS/RDS/EFS encryption at rest</td></tr>
+      <tr><td><code>cloudtrail-analyzer</code></td><td>Python 3.12</td><td>512 MB</td><td>10 min</td><td>Trail config, root usage, metric filters</td></tr>
+      <tr><td><code>native-service-puller</code></td><td>Python 3.12</td><td>512 MB</td><td>10 min</td><td>SecurityHub, GuardDuty, Config findings</td></tr>
+      <tr><td><code>prowler-scanner</code></td><td>Container</td><td>3072 MB</td><td>15 min</td><td>CIS AWS 1.4/2.0 benchmarks (optional)</td></tr>
+      <tr><td><code>aggregate-findings</code></td><td>Python 3.12</td><td>512 MB</td><td>5 min</td><td>Deduplicate and consolidate findings</td></tr>
+      <tr><td><code>ai-synthesis</code></td><td>Python 3.12</td><td>512 MB</td><td>5 min</td><td>Bedrock Claude: risk scoring, summaries</td></tr>
+      <tr><td><code>report-generator</code></td><td>Python 3.12</td><td>1024 MB</td><td>5 min</td><td>HTML/JSON/CSV report generation</td></tr>
+      <tr><td><code>start-assessment</code></td><td>Python 3.12</td><td>256 MB</td><td>30 sec</td><td>API: create assessment, start execution</td></tr>
+      <tr><td><code>get-assessment</code></td><td>Python 3.12</td><td>256 MB</td><td>10 sec</td><td>API: fetch assessment status</td></tr>
+      <tr><td><code>list-assessments</code></td><td>Python 3.12</td><td>256 MB</td><td>10 sec</td><td>API: list all assessments</td></tr>
+      <tr><td><code>get-report</code></td><td>Python 3.12</td><td>256 MB</td><td>10 sec</td><td>API: generate presigned S3 URL</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 8. Data Model -->
+<section id="data-model">
+  <h2>Data Model</h2>
+  <p>Three DynamoDB tables store assessment lifecycle data, security findings, and organizational context. All tables use KMS encryption and TTL-based expiration (90 days).</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>Assessments Table</h4>
+      <table style="font-size:12px;">
+        <thead><tr><th>Field</th><th>Type</th></tr></thead>
+        <tbody>
+          <tr><td><code>assessmentId</code> (PK)</td><td>UUID</td></tr>
+          <tr><td><code>accountId</code></td><td>String</td></tr>
+          <tr><td><code>status</code></td><td>PENDING | RUNNING | COMPLETED | FAILED</td></tr>
+          <tr><td><code>progress</code></td><td>Number (0-100)</td></tr>
+          <tr><td><code>findingsCount</code></td><td>Number</td></tr>
+          <tr><td><code>riskScore</code></td><td>Number (0-100)</td></tr>
+          <tr><td><code>riskLevel</code></td><td>CRITICAL | HIGH | MEDIUM | LOW</td></tr>
+          <tr><td><code>reportS3Key</code></td><td>String</td></tr>
+          <tr><td><code>expiresAt</code> (TTL)</td><td>ISO 8601</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:11px;color:var(--text-secondary);margin:8px 0 0;">GSI: <code>accountId-index</code> (PK: accountId, SK: createdAt)</p>
+    </div>
+    <div class="card">
+      <h4>Findings Table</h4>
+      <table style="font-size:12px;">
+        <thead><tr><th>Field</th><th>Type</th></tr></thead>
+        <tbody>
+          <tr><td><code>assessmentId</code> (PK)</td><td>UUID</td></tr>
+          <tr><td><code>findingId</code> (SK)</td><td>UUID</td></tr>
+          <tr><td><code>source</code></td><td>iam-analyzer | prowler | ...</td></tr>
+          <tr><td><code>severity</code></td><td>CRITICAL | HIGH | MEDIUM | LOW | INFO</td></tr>
+          <tr><td><code>title</code></td><td>String</td></tr>
+          <tr><td><code>resourceType</code></td><td>AWS::EC2::SecurityGroup | ...</td></tr>
+          <tr><td><code>remediation</code></td><td>Object (steps, effort)</td></tr>
+          <tr><td><code>expiresAt</code> (TTL)</td><td>ISO 8601</td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:11px;color:var(--text-secondary);margin:8px 0 0;">GSI: <code>severity-index</code> (PK: severity)</p>
+    </div>
+  </div>
+</section>
+
+<!-- 9. Security & Compliance -->
+<section id="security">
+  <h2>Security &amp; Compliance</h2>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>Encryption</h4>
+      <ul style="font-size:13px; padding-left:18px; line-height:2;">
+        <li>KMS customer-managed key with rotation</li>
+        <li>S3 server-side encryption (SSE-KMS)</li>
+        <li>DynamoDB encryption at rest</li>
+        <li>Presigned URLs use SigV4 signing</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Access Control</h4>
+      <ul style="font-size:13px; padding-left:18px; line-height:2;">
+        <li>API Gateway: IAM authorization</li>
+        <li>Lambda: least-privilege IAM roles</li>
+        <li>Cross-account: STS AssumeRole + ExternalId</li>
+        <li>No credentials stored anywhere</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Data Retention</h4>
+      <ul style="font-size:13px; padding-left:18px; line-height:2;">
+        <li>90-day TTL on assessment data (GDPR)</li>
+        <li>S3 lifecycle: Standard → IA → Glacier → Expire</li>
+        <li>CloudWatch logs: 30-day retention</li>
+        <li>Point-in-time recovery on DynamoDB</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Compliance Frameworks</h4>
+      <ul style="font-size:13px; padding-left:18px; line-height:2;">
+        <li><span class="sev sev-low">Active</span> CIS AWS 1.4 / 2.0</li>
+        <li><span class="sev sev-info">Mapped</span> NIST 800-53</li>
+        <li><span class="sev sev-info">Mapped</span> ISO 27001, SOC2, GDPR</li>
+        <li><span class="sev" style="background:#9E9E9E;">Planned</span> HIPAA, PCI-DSS</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>CloudSecure Assessment Platform &mdash; Apache 2.0 License</p>
+</footer>
+
+<script>
+  // Highlight active sidebar link on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('nav.sidebar a');
+
+  function updateActive() {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 80) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  }
+
+  window.addEventListener('scroll', updateActive, { passive: true });
+  updateActive();
+
+  // Smooth scroll
+  navLinks.forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+
+</body>
+</html>
