@@ -17,7 +17,9 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          pip install ruff==0.4.9
+          pip install -e ".[dev]"
         working-directory: lambdas
 
       - name: Ruff lint
