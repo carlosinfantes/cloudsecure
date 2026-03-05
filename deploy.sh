@@ -2,6 +2,7 @@
 # CloudSecure Assessment Platform - Infrastructure Deployment
 # Usage: ./deploy.sh                    # First-time interactive deployment
 #        ./deploy.sh --upgrade [COMP]   # Non-interactive upgrade (all|infra|prowler|cli)
+#        ./deploy.sh --setup-role       # Create assessment role for self-testing
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -280,7 +281,99 @@ run_upgrade() {
   show_upgrade_summary
 }
 
+# ─── Setup Role Function ─────────────────────────────────────
+
+setup_role() {
+  load_env
+  validate_env
+  echo ""
+
+  local EXTERNAL_ID="cloudsecure-${ACCOUNT_ID}"
+  local ROLE_STACK="CloudSecure-AssessmentRole"
+  local TEMPLATE="${SCRIPT_DIR}/onboarding/cloudformation/cloudsecure-role.yaml"
+
+  # Check if stack already exists
+  local stack_status
+  stack_status=$(aws cloudformation describe-stacks \
+    --stack-name "$ROLE_STACK" \
+    --profile "$AWS_PROFILE" --region "$AWS_REGION" \
+    --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "DOES_NOT_EXIST")
+
+  if [[ "$stack_status" == *"COMPLETE"* && "$stack_status" != "DELETE_COMPLETE" ]]; then
+    ok "Assessment role already exists (${ROLE_STACK})"
+    local role_arn
+    role_arn=$(aws cloudformation describe-stacks \
+      --stack-name "$ROLE_STACK" \
+      --profile "$AWS_PROFILE" --region "$AWS_REGION" \
+      --query "Stacks[0].Outputs[?OutputKey=='RoleArn'].OutputValue" \
+      --output text 2>/dev/null)
+    echo ""
+    echo -e "  Role ARN:     ${CYAN}${role_arn}${NC}"
+    echo -e "  External ID:  ${CYAN}${EXTERNAL_ID}${NC}"
+    echo ""
+    echo -e "${BOLD}Run your first assessment:${NC}"
+    echo -e "  cloudsecure --profile ${AWS_PROFILE} assess \\"
+    echo -e "    --account-id ${ACCOUNT_ID} \\"
+    echo -e "    --role-arn ${role_arn} \\"
+    echo -e "    --external-id ${EXTERNAL_ID}"
+    echo ""
+    return 0
+  fi
+
+  section "Creating Assessment Role"
+
+  info "Deploying ${ROLE_STACK} stack..."
+  aws cloudformation deploy \
+    --template-file "$TEMPLATE" \
+    --stack-name "$ROLE_STACK" \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --parameter-overrides \
+      "CloudSecureAccountId=${ACCOUNT_ID}" \
+      "ExternalId=${EXTERNAL_ID}" \
+    --profile "$AWS_PROFILE" --region "$AWS_REGION"
+
+  ok "Assessment role created"
+  echo ""
+
+  local role_arn
+  role_arn=$(aws cloudformation describe-stacks \
+    --stack-name "$ROLE_STACK" \
+    --profile "$AWS_PROFILE" --region "$AWS_REGION" \
+    --query "Stacks[0].Outputs[?OutputKey=='RoleArn'].OutputValue" \
+    --output text 2>/dev/null)
+
+  echo -e "${BOLD}════════════════════════════════════════════════${NC}"
+  echo -e "${BOLD}  Assessment role ready!${NC}"
+  echo -e "${BOLD}════════════════════════════════════════════════${NC}"
+  echo ""
+  echo -e "  Role ARN:     ${CYAN}${role_arn}${NC}"
+  echo -e "  External ID:  ${CYAN}${EXTERNAL_ID}${NC}"
+  echo -e "  Account:      ${ACCOUNT_ID}"
+  echo ""
+  echo -e "${BOLD}Run your first assessment:${NC}"
+  echo -e "  cloudsecure --profile ${AWS_PROFILE} assess \\"
+  echo -e "    --account-id ${ACCOUNT_ID} \\"
+  echo -e "    --role-arn ${role_arn} \\"
+  echo -e "    --external-id ${EXTERNAL_ID}"
+  echo ""
+  echo -e "${BOLD}Then download the report:${NC}"
+  echo -e "  cloudsecure --profile ${AWS_PROFILE} report <ASSESSMENT_ID> --format html --open"
+  echo ""
+}
+
 # ─── Argument Parsing ─────────────────────────────────────────
+if [[ "${1:-}" == "--setup-role" ]]; then
+  echo ""
+  echo -e "${BOLD}╔══════════════════════════════════════════════╗${NC}"
+  echo -e "${BOLD}║       CloudSecure Assessment Platform        ║${NC}"
+  echo -e "${BOLD}║         Assessment Role Setup                ║${NC}"
+  echo -e "${BOLD}╚══════════════════════════════════════════════╝${NC}"
+  echo ""
+
+  setup_role
+  exit 0
+fi
+
 if [[ "${1:-}" == "--upgrade" ]]; then
   UPGRADE_COMPONENT="${2:-all}"
   case "$UPGRADE_COMPONENT" in
@@ -536,14 +629,27 @@ echo -e "  Environment:   ${CLOUDSECURE_ENV}"
 echo -e "  Prowler:       $([ "$SKIP_PROWLER" = true ] && echo 'skipped' || echo 'enabled')"
 echo ""
 echo -e "${BOLD}Next steps:${NC}"
-echo "  1. Create an assessment role in the target account:"
-echo "     aws cloudformation deploy --template-file onboarding/cloudformation/cloudsecure-role.yaml \\"
-echo "       --stack-name CloudSecure-AssessmentRole --capabilities CAPABILITY_NAMED_IAM \\"
-echo "       --parameter-overrides CloudSecureAccountId=${ACCOUNT_ID} ExternalId=<your-external-id>"
 echo ""
-echo "  2. Install the CLI tool:"
+echo -e "  1. ${BOLD}Install the CLI:${NC}"
 echo "     pip install cloudsecure"
 echo ""
-echo "  3. Run your first assessment:"
-echo "     cloudsecure assess --account-id <TARGET_ACCOUNT> --role-arn <ROLE_ARN> --external-id <EXTERNAL_ID>"
+echo -e "  2. ${BOLD}Create an assessment role (quick setup):${NC}"
+echo "     ./deploy.sh --setup-role"
+echo ""
+echo -e "     ${DIM}Or manually:${NC}"
+echo -e "     ${DIM}aws cloudformation deploy --template-file onboarding/cloudformation/cloudsecure-role.yaml ${NC}\\"
+echo -e "     ${DIM}  --stack-name CloudSecure-AssessmentRole --capabilities CAPABILITY_NAMED_IAM ${NC}\\"
+echo -e "     ${DIM}  --parameter-overrides CloudSecureAccountId=${ACCOUNT_ID} ExternalId=cloudsecure-${ACCOUNT_ID} ${NC}\\"
+echo -e "     ${DIM}  --profile ${AWS_PROFILE} --region ${AWS_REGION}${NC}"
+echo ""
+echo -e "  3. ${BOLD}Run your first assessment:${NC}"
+echo "     cloudsecure --profile ${AWS_PROFILE} assess \\"
+echo "       --account-id ${ACCOUNT_ID} \\"
+echo "       --role-arn arn:aws:iam::${ACCOUNT_ID}:role/CloudSecureAssessmentRole \\"
+echo "       --external-id cloudsecure-${ACCOUNT_ID}"
+echo ""
+echo -e "  4. ${BOLD}Download the report:${NC}"
+echo "     cloudsecure --profile ${AWS_PROFILE} report <ASSESSMENT_ID> --format html --open"
+echo ""
+echo -e "  ${DIM}To teardown: ./destroy.sh${NC}"
 echo ""
