@@ -123,7 +123,7 @@ CloudSecure generates professional HTML reports with AI-powered executive summar
 
 - AWS CLI configured with an IAM profile
 - Node.js 18+ and Python 3.12+
-- Docker (optional — required for Prowler CIS scanner)
+- Docker or Podman (optional — required for Prowler CIS scanner)
 
 ### Install the CLI
 
@@ -154,7 +154,7 @@ Or manually:
 cp .env.example .env    # Edit with your AWS profile, region, etc.
 make install && make deploy
 
-# Deploy without Docker/Prowler
+# Deploy without Docker/Podman (skips Prowler)
 SKIP_PROWLER=true make deploy
 ```
 

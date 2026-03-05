@@ -4,7 +4,7 @@
 
 - Node.js 18+
 - Python 3.12+
-- Docker
+- Docker or Podman
 - AWS CLI configured
 - [pre-commit](https://pre-commit.com/)
 - [gitleaks](https://github.com/gitleaks/gitleaks)
@@ -53,6 +53,7 @@ pre-commit --version
 
 ```bash
 cd lambdas
+# Use docker or podman
 docker run --rm --entrypoint /bin/bash \
   -v "$(pwd)/layer:/layer" \
   public.ecr.aws/lambda/python:3.12 \
@@ -60,13 +61,18 @@ docker run --rm --entrypoint /bin/bash \
 cp -r shared analyzers layer/python/
 ```
 
+> **Tip:** `podman` can be used as a drop-in replacement for `docker` in the command above.
+
 ### 3. Install dependencies
 
 ```bash
 # CDK
 cd infrastructure && npm install
 
-# Python
+# Python (option A: system packages)
+sudo apt install python3-pytest python3-pydantic python3-boto3 python3-dateutil
+
+# Python (option B: venv + pip)
 cd ../lambdas
 python -m venv .venv
 source .venv/bin/activate

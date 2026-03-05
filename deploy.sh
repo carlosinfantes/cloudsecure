@@ -77,13 +77,16 @@ else
   fail "pip not found. Install: python3 -m ensurepip"
 fi
 
-# Docker (optional)
-HAS_DOCKER=false
+# Container runtime (Docker or Podman — optional)
+CONTAINER_CMD=""
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  CONTAINER_CMD="docker"
   ok "Docker $(docker --version | awk '{print $3}' | tr -d ',')"
-  HAS_DOCKER=true
+elif command -v podman >/dev/null 2>&1; then
+  CONTAINER_CMD="podman"
+  ok "Podman $(podman --version 2>/dev/null | awk '{print $3}')"
 else
-  warn "Docker not available — Prowler scanner will be skipped"
+  warn "No container runtime (Docker/Podman) — Prowler scanner will be skipped"
 fi
 
 echo ""
@@ -122,11 +125,11 @@ CLOUDSECURE_ENV=${CLOUDSECURE_ENV:-dev}
 # Prowler
 SKIP_PROWLER=false
 PROWLER_IMAGE="carlosinfantes/cloudsecure-prowler:latest"
-if [ "$HAS_DOCKER" = false ]; then
+if [ -z "$CONTAINER_CMD" ]; then
   SKIP_PROWLER=true
 else
   echo ""
-  read -rp "Include Prowler CIS scanner? (requires Docker) [Y/n]: " INCLUDE_PROWLER
+  read -rp "Include Prowler CIS scanner? (requires Docker/Podman) [Y/n]: " INCLUDE_PROWLER
   INCLUDE_PROWLER=$(echo "$INCLUDE_PROWLER" | tr '[:upper:]' '[:lower:]')
   if [[ "$INCLUDE_PROWLER" == "n" ]]; then
     SKIP_PROWLER=true
