@@ -15,11 +15,18 @@ Requires Python 3.9+ and AWS credentials configured (`aws configure`).
 ## Quick Start
 
 ```bash
-# Start a security assessment
+# Start a security assessment (scans everything)
 cloudsecure assess \
   --account-id 123456789012 \
   --role-arn arn:aws:iam::123456789012:role/CloudSecureAssessmentRole \
   --external-id your-external-id
+
+# Scan only specific services (iam, s3, network, encryption, cloudtrail, ec2, rds, vpc)
+cloudsecure assess \
+  --account-id 123456789012 \
+  --role-arn arn:aws:iam::123456789012:role/CloudSecureAssessmentRole \
+  --external-id your-external-id \
+  --scope iam --scope s3
 
 # List all assessments
 cloudsecure status

@@ -32,6 +32,53 @@ ASSESSMENTS_TABLE = os.environ.get("ASSESSMENTS_TABLE", "cloudsecure-assessments
 PROWLER_COMPLIANCE_FRAMEWORK = "cis_2.0_aws"
 PROWLER_TIMEOUT_SECONDS = 840  # 14 minutes (Lambda max is 15)
 
+# All available checks (the full default set)
+ALL_CHECKS = [
+    # IAM
+    "iam_root_mfa_enabled",
+    "iam_root_hardware_mfa_enabled",
+    "iam_no_root_access_key",
+    "iam_user_mfa_enabled_console_access",
+    "iam_password_policy_minimum_length_14",
+    # CloudTrail
+    "cloudtrail_multi_region_enabled",
+    "cloudtrail_log_file_validation_enabled",
+    "cloudtrail_cloudwatch_logging_enabled",
+    # S3
+    "s3_bucket_public_access",
+    "s3_bucket_default_encryption",
+    "s3_account_level_public_access_blocks",
+    # EC2
+    "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_22",
+    "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_3389",
+    "ec2_ebs_default_encryption",
+    # RDS
+    "rds_instance_storage_encrypted",
+    "rds_instance_no_public_access",
+    # VPC
+    "vpc_flow_logs_enabled",
+]
+
+# Maps scan scope values to Prowler check IDs
+SCOPE_CHECKS = {
+    "iam": [c for c in ALL_CHECKS if c.startswith("iam_")],
+    "cloudtrail": [c for c in ALL_CHECKS if c.startswith("cloudtrail_")],
+    "s3": [c for c in ALL_CHECKS if c.startswith("s3_")],
+    "ec2": [c for c in ALL_CHECKS if c.startswith("ec2_")],
+    "network": [
+        "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_22",
+        "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_3389",
+        "vpc_flow_logs_enabled",
+    ],
+    "rds": [c for c in ALL_CHECKS if c.startswith("rds_")],
+    "vpc": ["vpc_flow_logs_enabled"],
+    "encryption": [
+        "ec2_ebs_default_encryption",
+        "rds_instance_storage_encrypted",
+        "s3_bucket_default_encryption",
+    ],
+}
+
 # Severity mapping from Prowler to CloudSecure
 SEVERITY_MAP = {
     "critical": "CRITICAL",
@@ -63,6 +110,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     role_arn = event.get("roleArn")
     external_id = event.get("externalId")
     regions = event.get("regions", [])
+    scope = event.get("scope", ["all"])
 
     if not all([assessment_id, account_id, role_arn, external_id]):
         return {
@@ -71,6 +119,28 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "error": "Missing required parameters",
             "assessmentId": assessment_id,
         }
+
+    # Resolve checks based on scope
+    if "all" in scope:
+        checks = ALL_CHECKS
+    else:
+        checks = []
+        for s in scope:
+            checks.extend(SCOPE_CHECKS.get(s, []))
+        checks = list(dict.fromkeys(checks))  # deduplicate preserving order
+
+    if not checks:
+        logger.info(f"No Prowler checks match scope {scope} — skipping")
+        return {
+            "success": True,
+            "analyzer": "prowler",
+            "assessmentId": assessment_id,
+            "findingsCount": 0,
+            "findings": [],
+            "skipped": True,
+        }
+
+    logger.info(f"Prowler scope={scope}, running {len(checks)} checks")
 
     try:
         # Update assessment progress
@@ -85,7 +155,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 credentials=credentials,
                 account_id=account_id,
                 output_dir=output_dir,
-                regions=regions[:5] if regions else None,  # Limit regions for speed
+                regions=regions[:5] if regions else None,
+                checks=checks,
             )
 
             if not prowler_output["success"]:
@@ -167,6 +238,7 @@ def run_prowler(
     account_id: str,
     output_dir: str,
     regions: list[str] | None = None,
+    checks: list[str] | None = None,
 ) -> dict[str, Any]:
     """Execute Prowler CLI.
 
@@ -175,11 +247,13 @@ def run_prowler(
         account_id: Target AWS account ID
         output_dir: Directory for output files
         regions: Optional list of regions to scan
+        checks: List of Prowler check IDs to run (defaults to ALL_CHECKS)
 
     Returns:
         dict with success status and version
     """
-    logger.info(f"Running Prowler for account {account_id}")
+    checks = checks or ALL_CHECKS
+    logger.info(f"Running Prowler for account {account_id} with {len(checks)} checks")
 
     # Set environment variables for AWS credentials
     env = os.environ.copy()
@@ -190,7 +264,6 @@ def run_prowler(
 
     # Build Prowler command
     # Note: Prowler 5.x uses json-ocsf format and --compliance and --checks are mutually exclusive
-    # Since we're running specific checks for faster execution, we omit --compliance
     cmd = [
         "prowler",
         "aws",
@@ -208,37 +281,9 @@ def run_prowler(
         cmd.append("--filter-region")
         cmd.extend(regions)
 
-    # Add specific checks for faster execution (subset of CIS)
-    # This reduces scan time while covering critical areas
-    critical_checks = [
-        # IAM
-        "iam_root_mfa_enabled",
-        "iam_root_hardware_mfa_enabled",
-        "iam_no_root_access_key",
-        "iam_user_mfa_enabled_console_access",
-        "iam_password_policy_minimum_length_14",
-        # CloudTrail
-        "cloudtrail_multi_region_enabled",
-        "cloudtrail_log_file_validation_enabled",
-        "cloudtrail_cloudwatch_logging_enabled",
-        # S3
-        "s3_bucket_public_access",
-        "s3_bucket_default_encryption",
-        "s3_account_level_public_access_blocks",
-        # EC2
-        "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_22",
-        "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_3389",
-        "ec2_ebs_default_encryption",
-        # RDS
-        "rds_instance_storage_encrypted",
-        "rds_instance_no_public_access",
-        # VPC
-        "vpc_flow_logs_enabled",
-    ]
-
     # Prowler 5.x expects checks as separate arguments (not comma-separated)
     cmd.append("--checks")
-    cmd.extend(critical_checks)
+    cmd.extend(checks)
 
     logger.info(f"Prowler command: {' '.join(cmd[:10])}...")  # Log partial command
 

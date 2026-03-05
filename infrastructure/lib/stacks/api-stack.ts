@@ -157,21 +157,21 @@ export class ApiStack extends cdk.Stack {
     const listAssessmentsIntegration = new apigateway.LambdaIntegration(listAssessmentsLambda);
     const getReportIntegration = new apigateway.LambdaIntegration(getReportLambda);
 
-    // Mock integration for unimplemented endpoints
+    // Mock integration for CRF endpoints (Phase 2 — not implemented in v1)
     const mockIntegration = new apigateway.MockIntegration({
       integrationResponses: [
         {
-          statusCode: '200',
+          statusCode: '501',
           responseTemplates: {
             'application/json': JSON.stringify({
-              message: 'CloudSecure API - Endpoint not yet implemented',
-              status: 'placeholder',
+              error: 'Not implemented in v1',
+              status: 'not_implemented',
             }),
           },
         },
       ],
       requestTemplates: {
-        'application/json': '{"statusCode": 200}',
+        'application/json': '{"statusCode": 501}',
       },
     });
 
@@ -181,7 +181,7 @@ export class ApiStack extends cdk.Stack {
 
     const mockMethodOptions: apigateway.MethodOptions = {
       authorizationType: iamAuth,
-      methodResponses: [{ statusCode: '200' }],
+      methodResponses: [{ statusCode: '501' }],
     };
 
     // ==================== Assessment Endpoints ====================

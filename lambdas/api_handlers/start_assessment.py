@@ -46,7 +46,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     Returns:
         API Gateway response with assessment details
     """
-    logger.info(f"Received request: {json.dumps(event)}")
+    logger.info("Received request: method=%s path=%s", event.get("httpMethod"), event.get("path"))
 
     try:
         # Parse request body
@@ -131,6 +131,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 "accountId": account_id,
                 "roleArn": role_arn,
                 "externalId": external_id,
+                "scope": scope,
             }
 
             try:
