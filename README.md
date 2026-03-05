@@ -5,7 +5,7 @@
 
 <p align="center">
   <a href="https://github.com/carlosinfantes/cloudsecure/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/version-1.0.0-green.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.2.0-green.svg" alt="Version">
   <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/CDK-TypeScript-orange.svg" alt="CDK">
   <img src="https://img.shields.io/badge/AI-Bedrock%20Claude-blueviolet.svg" alt="AI">

@@ -19,28 +19,11 @@ pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-### 2. Build the Lambda layer
+### 2. Install dependencies and build
 
 ```bash
-cd lambdas
-docker run --rm --entrypoint /bin/bash \
-  -v "$(pwd)/layer:/layer" \
-  public.ecr.aws/lambda/python:3.12 \
-  -c "pip install pydantic jinja2 boto3 --target /layer/python/ --no-cache-dir"
-cp -r shared analyzers layer/python/
-```
-
-### 3. Install dependencies
-
-```bash
-# CDK
-cd infrastructure && npm install
-
-# Python
-cd ../lambdas
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+make install   # Install CDK + Python dependencies
+make layer     # Build Lambda shared layer (uses Docker if available, pip fallback)
 ```
 
 ## Secret Scanning Policy
@@ -64,6 +47,10 @@ If a hook blocks your commit, fix the issue before committing. Never use `--no-v
 - [ ] Lambda layer vendored files are NOT committed (`lambdas/layer/python/`)
 - [ ] Tests pass (`cd lambdas && pytest`)
 - [ ] CDK synthesizes successfully (`cd infrastructure && npm run build && npx cdk synth`)
+
+## Commits
+
+Use conventional commit messages: `Fix ...`, `Add ...`, `Update ...`, `Refactor ...`.
 
 ## Branch Strategy
 
