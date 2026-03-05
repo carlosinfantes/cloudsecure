@@ -68,3 +68,13 @@ def resolve_api_endpoint(profile: str | None = None, region: str | None = None,
         f"Could not resolve API endpoint. Deploy CloudSecure first or set "
         f"CLOUDSECURE_API_ENDPOINT environment variable."
     )
+
+
+def invalidate_endpoint(env_name: str = "dev", region: str | None = None) -> None:
+    """Remove a cached endpoint so the next resolve fetches from CloudFormation."""
+    config = get_config()
+    cache_key = f"{env_name}:{region or 'default'}"
+    endpoints = config.get("endpoints", {})
+    if cache_key in endpoints:
+        del endpoints[cache_key]
+        save_config(config)
