@@ -115,13 +115,13 @@ destroy: ## Destroy all stacks (requires confirmation)
 # ─── Quality ────────────────────────────────────────────────
 test: ## Run all tests (CDK + Python)
 	@echo "Running CDK tests..."
-	@cd $(INFRA_DIR) && npm test 2>/dev/null || true
+	@cd $(INFRA_DIR) && npm test
 	@echo "Running Python tests..."
-	@cd $(LAMBDAS_DIR) && python -m pytest tests/ -v 2>/dev/null || true
+	@cd $(LAMBDAS_DIR) && python -m pytest tests/ -v
 
 lint: ## Lint Python code
-	@cd $(LAMBDAS_DIR) && ruff check . 2>/dev/null || true
-	@cd $(LAMBDAS_DIR) && black --check . 2>/dev/null || true
+	@cd $(LAMBDAS_DIR) && ruff check .
+	@cd $(LAMBDAS_DIR) && black --check .
 
 # ─── Cleanup ────────────────────────────────────────────────
 clean: ## Remove build artifacts

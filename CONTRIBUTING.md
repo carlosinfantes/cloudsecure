@@ -40,13 +40,54 @@ Pre-commit hooks enforce the following on every commit:
 
 If a hook blocks your commit, fix the issue before committing. Never use `--no-verify` to bypass hooks.
 
+## Testing & Validation
+
+### Running tests
+
+```bash
+make test    # Run CDK (jest) + Python (pytest) tests
+make lint    # Check Python code style (ruff + black)
+```
+
+Or individually:
+
+```bash
+cd lambdas && python -m pytest tests/ -v              # Python unit tests
+cd infrastructure && npm test                          # CDK snapshot tests
+cd lambdas && ruff check . && black --check .          # Linting
+```
+
+### What gets tested
+
+| Area | Tool | Coverage |
+|------|------|----------|
+| Shared models (Assessment, Finding, CRF) | pytest + moto | `lambdas/tests/test_models.py`, `test_crf_models.py` |
+| AWS client (STS AssumeRole, regions) | pytest + moto | `lambdas/tests/test_aws_client.py` |
+| CDK stack synthesis | jest | `infrastructure/test/` |
+| Python code style | ruff + black | All files in `lambdas/` |
+| Secrets in code | gitleaks + custom hooks | Every commit (pre-commit) |
+| Secrets in CI | gitleaks GitHub Action | Every push and PR |
+
+### What runs automatically
+
+**On every commit** (pre-commit hooks):
+- Trailing whitespace, end-of-file, YAML/JSON/TOML validation
+- Secret scanning (gitleaks)
+- Block real AWS account IDs, internal emails, private keys
+- Block commits directly to `main`
+- Python formatting (ruff + black on `lambdas/`)
+
+**On every push/PR** (GitHub Actions):
+- gitleaks secret scan (`.github/workflows/secrets-scan.yml`)
+
 ## Pull Request Checklist
 
 - [ ] Pre-commit hooks pass (`pre-commit run --all-files`)
+- [ ] Tests pass (`make test`)
+- [ ] Linting passes (`make lint`)
 - [ ] No real AWS account IDs or credentials in any file
 - [ ] Lambda layer vendored files are NOT committed (`lambdas/layer/python/`)
-- [ ] Tests pass (`cd lambdas && pytest`)
-- [ ] CDK synthesizes successfully (`cd infrastructure && npm run build && npx cdk synth`)
+- [ ] CDK synthesizes successfully (`make synth`)
 
 ## Commits
 
