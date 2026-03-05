@@ -181,9 +181,14 @@ upgrade_prowler() {
   ok "Prowler image pushed to ECR"
   echo ""
 
-  info "Redeploying Prowler Lambda to use new image..."
-  make -C "$SCRIPT_DIR" deploy
-  ok "Prowler Lambda updated"
+  info "Updating Prowler Lambda to use new image..."
+  local ecr_uri
+  ecr_uri="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:latest"
+  aws lambda update-function-code \
+    --function-name "cloudsecure-prowler-scanner-${CLOUDSECURE_ENV}" \
+    --image-uri "$ecr_uri" \
+    --profile "$AWS_PROFILE" --region "$AWS_REGION" >/dev/null
+  ok "Prowler Lambda updated (${GREEN}${ecr_uri}${NC})"
   echo ""
 }
 
