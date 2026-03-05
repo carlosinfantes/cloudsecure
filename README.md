@@ -146,6 +146,18 @@ aws cloudformation deploy \
   --parameter-overrides ExternalId=your-external-id
 ```
 
+### Upgrade Components
+
+```bash
+# Upgrade everything (infrastructure + Prowler + CLI)
+./deploy.sh --upgrade
+
+# Upgrade only specific components
+./deploy.sh --upgrade infra     # Redeploy CDK stacks
+./deploy.sh --upgrade prowler   # Pull latest Prowler image + redeploy
+./deploy.sh --upgrade cli       # Upgrade CLI from PyPI
+```
+
 ### Run an Assessment
 
 ```bash

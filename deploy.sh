@@ -1,17 +1,304 @@
 #!/usr/bin/env bash
 # CloudSecure Assessment Platform - Infrastructure Deployment
-# Usage: ./deploy.sh
-# This script deploys CloudSecure infrastructure to your AWS account.
+# Usage: ./deploy.sh                    # First-time interactive deployment
+#        ./deploy.sh --upgrade [COMP]   # Non-interactive upgrade (all|infra|prowler|cli)
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ─── Colors & Helpers ──────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-CYAN='\033[0;36m'; BOLD='\033[1m'; NC='\033[0m'
+CYAN='\033[0;36m'; BOLD='\033[1m'; DIM='\033[2m'; NC='\033[0m'
 
 info()  { echo -e "${CYAN}▸${NC} $*"; }
 ok()    { echo -e "${GREEN}✓${NC} $*"; }
 warn()  { echo -e "${YELLOW}⚠${NC} $*"; }
 fail()  { echo -e "${RED}✗${NC} $*"; exit 1; }
+section() { echo -e "${BOLD}── $* ──────────────────────────────────${NC}"; echo ""; }
+
+# ─── Upgrade Functions ────────────────────────────────────────
+
+load_env() {
+  local env_file="${SCRIPT_DIR}/.env"
+  if [[ ! -f "$env_file" ]]; then
+    fail ".env not found. Run './deploy.sh' first for initial setup."
+  fi
+  set -a
+  # shellcheck source=/dev/null
+  source "$env_file"
+  set +a
+  ok "Loaded configuration from .env"
+}
+
+validate_env() {
+  local missing=()
+  [[ -z "${AWS_PROFILE:-}" ]] && missing+=("AWS_PROFILE")
+  [[ -z "${AWS_REGION:-}" ]] && missing+=("AWS_REGION")
+  [[ -z "${CLOUDSECURE_ENV:-}" ]] && missing+=("CLOUDSECURE_ENV")
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    fail "Missing .env variables: ${missing[*]}"
+  fi
+
+  info "Validating AWS credentials (profile: ${AWS_PROFILE})..."
+  CALLER_IDENTITY=$(aws sts get-caller-identity --profile "$AWS_PROFILE" --output json 2>/dev/null) || \
+    fail "Cannot authenticate with profile '${AWS_PROFILE}'. Check credentials."
+
+  ACCOUNT_ID=$(echo "$CALLER_IDENTITY" | python3 -c "import sys,json; print(json.load(sys.stdin)['Account'])")
+  ok "Profile: ${BOLD}${AWS_PROFILE}${NC} | Region: ${BOLD}${AWS_REGION}${NC} | Env: ${BOLD}${CLOUDSECURE_ENV}${NC}"
+
+  # Set up ECR vars for prowler
+  ECR_REPO="cloudsecure-prowler-${CLOUDSECURE_ENV}"
+}
+
+get_cli_versions() {
+  CLI_INSTALLED=$(cloudsecure --version 2>/dev/null | awk '{print $NF}' || echo "not installed")
+  CLI_LATEST=$(curl -sfm5 https://pypi.org/pypi/cloudsecure/json 2>/dev/null | \
+    python3 -c "import sys,json; print(json.load(sys.stdin)['info']['version'])" 2>/dev/null || echo "unknown")
+}
+
+get_prowler_versions() {
+  PROWLER_ECR_DATE=$(aws ecr describe-images --repository-name "$ECR_REPO" \
+    --profile "$AWS_PROFILE" --region "$AWS_REGION" \
+    --query "sort_by(imageDetails, &imagePushedAt)[-1].imagePushedAt" \
+    --output text 2>/dev/null | cut -dT -f1 || echo "never")
+  PROWLER_LATEST=$(curl -sfm5 "https://hub.docker.com/v2/repositories/carlosinfantes/cloudsecure-prowler/tags?page_size=5&ordering=last_updated" 2>/dev/null | \
+    python3 -c "import sys,json; tags=[t['name'] for t in json.load(sys.stdin).get('results',[]) if t['name']!='latest']; print(tags[0] if tags else 'latest')" 2>/dev/null || echo "unknown")
+}
+
+get_infra_version() {
+  INFRA_LAST_DEPLOY=$(aws cloudformation describe-stacks --profile "$AWS_PROFILE" --region "$AWS_REGION" \
+    --stack-name "CloudSecure-API-${CLOUDSECURE_ENV}" \
+    --query "Stacks[0].LastUpdatedTime // Stacks[0].CreationTime" \
+    --output text 2>/dev/null | cut -dT -f1 || echo "never")
+}
+
+show_version_table() {
+  section "Version Check"
+
+  get_cli_versions
+  get_prowler_versions
+  get_infra_version
+
+  printf "  ${BOLD}%-14s %-16s %-16s %s${NC}\n" "Component" "Installed" "Latest" "Status"
+  printf "  %-14s %-16s %-16s %s\n" "─────────" "─────────" "──────" "──────"
+
+  # CLI row
+  if [[ "$CLI_INSTALLED" == "$CLI_LATEST" && "$CLI_LATEST" != "unknown" ]]; then
+    printf "  %-14s %-16s %-16s " "CLI" "$CLI_INSTALLED" "$CLI_LATEST"
+    echo -e "${GREEN}✓ Up to date${NC}"
+  elif [[ "$CLI_LATEST" == "unknown" ]]; then
+    printf "  %-14s %-16s %-16s " "CLI" "$CLI_INSTALLED" "?"
+    echo -e "${YELLOW}? Cannot check PyPI${NC}"
+  else
+    printf "  %-14s %-16s %-16s " "CLI" "$CLI_INSTALLED" "$CLI_LATEST"
+    echo -e "${YELLOW}⬆ Update available${NC}"
+  fi
+
+  # Prowler row
+  if [[ "${SKIP_PROWLER:-false}" == "true" ]]; then
+    printf "  %-14s %-16s %-16s " "Prowler" "disabled" "—"
+    echo -e "${DIM}skipped${NC}"
+  else
+    printf "  %-14s %-16s %-16s " "Prowler" "$PROWLER_ECR_DATE" "$PROWLER_LATEST"
+    echo -e "${CYAN}Docker Hub${NC}"
+  fi
+
+  # Infra row
+  printf "  %-14s %-16s %-16s " "Infra" "$INFRA_LAST_DEPLOY" "(deployed)"
+  echo -e "${GREEN}✓${NC}"
+
+  echo ""
+}
+
+upgrade_cli() {
+  section "Upgrading CLI"
+
+  get_cli_versions
+
+  if [[ "$CLI_INSTALLED" == "not installed" ]]; then
+    echo -e "  Status:     ${RED}not installed${NC}"
+    echo -e "  Latest:     ${GREEN}${CLI_LATEST}${NC}"
+    echo ""
+    info "Installing cloudsecure from PyPI..."
+    if command -v pipx >/dev/null 2>&1; then
+      pipx install cloudsecure
+    else
+      python3 -m pip install --user cloudsecure
+    fi
+    local new_ver
+    new_ver=$(cloudsecure --version 2>/dev/null | awk '{print $NF}' || echo "unknown")
+    ok "CLI installed: ${GREEN}${new_ver}${NC}"
+    return 0
+  fi
+
+  if [[ "$CLI_INSTALLED" == "$CLI_LATEST" && "$CLI_LATEST" != "unknown" ]]; then
+    echo -e "  Installed:  ${GREEN}${CLI_INSTALLED}${NC}"
+    echo -e "  Latest:     ${GREEN}${CLI_LATEST}${NC}  ✓ Up to date"
+    echo ""
+    ok "CLI is already at the latest version"
+    return 0
+  fi
+
+  echo -e "  Installed:  ${YELLOW}${CLI_INSTALLED}${NC}"
+  echo -e "  Latest:     ${GREEN}${CLI_LATEST}${NC}  ⬆ Update available"
+  echo ""
+  info "Upgrading cloudsecure from PyPI..."
+
+  if command -v pipx >/dev/null 2>&1; then
+    pipx upgrade cloudsecure 2>/dev/null || pipx install cloudsecure
+  else
+    python3 -m pip install --upgrade cloudsecure
+  fi
+
+  local new_ver
+  new_ver=$(cloudsecure --version 2>/dev/null | awk '{print $NF}' || echo "unknown")
+  ok "CLI upgraded: ${CLI_INSTALLED} → ${GREEN}${new_ver}${NC}"
+  echo ""
+}
+
+upgrade_prowler() {
+  section "Upgrading Prowler"
+
+  if [[ "${SKIP_PROWLER:-false}" == "true" ]]; then
+    warn "Prowler is disabled (SKIP_PROWLER=true in .env). Skipping."
+    echo ""
+    return 0
+  fi
+
+  if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then
+    fail "Docker is required for Prowler upgrade but is not available."
+  fi
+
+  get_prowler_versions
+
+  echo -e "  ECR image:    ${YELLOW}${PROWLER_ECR_DATE}${NC}"
+  echo -e "  Docker Hub:   ${GREEN}${PROWLER_LATEST}${NC}"
+  echo ""
+
+  info "Pulling ${PROWLER_IMAGE:-carlosinfantes/cloudsecure-prowler:latest} from Docker Hub..."
+  make -C "$SCRIPT_DIR" prowler-push
+  ok "Prowler image pushed to ECR"
+  echo ""
+
+  info "Updating Prowler Lambda to use new image..."
+  local ecr_uri
+  ecr_uri="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:latest"
+  aws lambda update-function-code \
+    --function-name "cloudsecure-prowler-scanner-${CLOUDSECURE_ENV}" \
+    --image-uri "$ecr_uri" \
+    --profile "$AWS_PROFILE" --region "$AWS_REGION" >/dev/null
+  ok "Prowler Lambda updated (${GREEN}${ecr_uri}${NC})"
+  echo ""
+}
+
+upgrade_infra() {
+  section "Upgrading Infrastructure"
+
+  get_infra_version
+  echo -e "  Last deploy:  ${YELLOW}${INFRA_LAST_DEPLOY}${NC}"
+  echo ""
+
+  info "Installing dependencies..."
+  make -C "$SCRIPT_DIR" install
+
+  info "Building Lambda layer..."
+  make -C "$SCRIPT_DIR" layer
+
+  info "Deploying CDK stacks..."
+  make -C "$SCRIPT_DIR" deploy
+
+  get_infra_version
+  ok "Infrastructure upgraded (${GREEN}${INFRA_LAST_DEPLOY}${NC})"
+  echo ""
+}
+
+show_upgrade_summary() {
+  echo -e "${BOLD}════════════════════════════════════════════════${NC}"
+  echo -e "${BOLD}  Upgrade complete!${NC}"
+  echo -e "${BOLD}════════════════════════════════════════════════${NC}"
+  echo ""
+
+  # CLI version
+  local cli_ver
+  cli_ver=$(cloudsecure --version 2>/dev/null | awk '{print $NF}' || echo "n/a")
+  echo -e "  CLI:          ${GREEN}${cli_ver}${NC}"
+
+  # Prowler status
+  if [[ "${SKIP_PROWLER:-false}" != "true" ]]; then
+    local prowler_date
+    prowler_date=$(aws ecr describe-images --repository-name "$ECR_REPO" \
+      --profile "$AWS_PROFILE" --region "$AWS_REGION" \
+      --query "sort_by(imageDetails, &imagePushedAt)[-1].imagePushedAt" \
+      --output text 2>/dev/null | cut -dT -f1 || echo "n/a")
+    echo -e "  Prowler:      ${GREEN}${prowler_date}${NC} (ECR)"
+  else
+    echo -e "  Prowler:      ${DIM}disabled${NC}"
+  fi
+
+  # API endpoint
+  local api_endpoint
+  api_endpoint=$(aws cloudformation describe-stacks \
+    --profile "$AWS_PROFILE" --region "$AWS_REGION" \
+    --stack-name "CloudSecure-API-${CLOUDSECURE_ENV}" \
+    --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" \
+    --output text 2>/dev/null || echo "")
+  if [ -n "$api_endpoint" ]; then
+    echo -e "  API:          ${CYAN}${api_endpoint}${NC}"
+  fi
+
+  echo -e "  Environment:  ${CLOUDSECURE_ENV}"
+  echo ""
+}
+
+run_upgrade() {
+  local component="${1:-all}"
+
+  load_env
+  validate_env
+  echo ""
+
+  show_version_table
+
+  case "$component" in
+    all)
+      upgrade_cli
+      upgrade_prowler
+      upgrade_infra
+      ;;
+    cli)
+      upgrade_cli
+      ;;
+    prowler)
+      upgrade_prowler
+      ;;
+    infra)
+      upgrade_infra
+      ;;
+  esac
+
+  show_upgrade_summary
+}
+
+# ─── Argument Parsing ─────────────────────────────────────────
+if [[ "${1:-}" == "--upgrade" ]]; then
+  UPGRADE_COMPONENT="${2:-all}"
+  case "$UPGRADE_COMPONENT" in
+    all|infra|prowler|cli) ;;
+    *) fail "Unknown component: '${UPGRADE_COMPONENT}'. Use: all, infra, prowler, cli" ;;
+  esac
+
+  # Banner for upgrade mode
+  echo ""
+  echo -e "${BOLD}╔══════════════════════════════════════════════╗${NC}"
+  echo -e "${BOLD}║       CloudSecure Assessment Platform        ║${NC}"
+  echo -e "${BOLD}║            Component Upgrade                 ║${NC}"
+  echo -e "${BOLD}╚══════════════════════════════════════════════╝${NC}"
+  echo ""
+
+  run_upgrade "$UPGRADE_COMPONENT"
+  exit 0
+fi
 
 # ─── Banner ────────────────────────────────────────────────────
 echo ""
