@@ -1,4 +1,4 @@
-name: Publish Prowler Image to Docker Hub
+name: Publish Custom Prowler Image to Docker Hub
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build-and-push:
-    name: Build and push Prowler image
+    name: Build and push custom Prowler image
     runs-on: ubuntu-latest
     environment: Docker Hub
     steps:

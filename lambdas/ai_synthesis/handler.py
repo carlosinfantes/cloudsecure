@@ -24,7 +24,7 @@ logger.setLevel(logging.INFO)
 
 # Environment variables
 ASSESSMENTS_TABLE = os.environ.get("ASSESSMENTS_TABLE", "cloudsecure-assessments-dev")
-BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20241022-v2:0")
 AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
 
 # Risk weights by severity

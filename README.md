@@ -149,11 +149,18 @@ aws cloudformation deploy \
 ### Run an Assessment
 
 ```bash
-# Start assessment (polls until complete by default)
+# Start assessment — scans everything by default
 cloudsecure --profile YOUR_PROFILE assess \
   --account-id 123456789012 \
   --role-arn arn:aws:iam::123456789012:role/CloudSecureAssessmentRole \
   --external-id your-external-id
+
+# Scan only specific services
+cloudsecure --profile YOUR_PROFILE assess \
+  --account-id 123456789012 \
+  --role-arn arn:aws:iam::123456789012:role/CloudSecureAssessmentRole \
+  --external-id your-external-id \
+  --scope iam --scope s3
 
 # List all assessments
 cloudsecure --profile YOUR_PROFILE status
