@@ -1,36 +1,37 @@
-# CloudSecure Assessment Platform
+<p align="center">
+  <h1 align="center">CloudSecure</h1>
+  <p align="center">AI-powered AWS security assessment platform</p>
+</p>
 
-An agentless, portable AWS security assessment platform that provides comprehensive security posture analysis regardless of what native AWS security services the customer has enabled.
+<p align="center">
+  <a href="https://github.com/carlosinfantes/cloudsecure/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/version-1.0.0-green.svg" alt="Version">
+  <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="Python">
+  <img src="https://img.shields.io/badge/CDK-TypeScript-orange.svg" alt="CDK">
+  <img src="https://img.shields.io/badge/AI-Bedrock%20Claude-blueviolet.svg" alt="AI">
+</p>
 
-## Why CloudSecure?
+---
 
-Traditional security tools like Prowler, ScoutSuite, or Steampipe run from a CLI on an engineer's laptop. That means:
+Agentless, serverless security assessment platform that scans any AWS account and delivers AI-synthesized findings — no credentials shared, no agents installed, no infrastructure to manage.
 
-- The auditor needs **long-lived credentials** (access keys) to the customer's account
-- Credentials travel over the wire, get stored locally, and risk exposure
-- There is no audit trail of *who* ran *what* and *when*
-- Scaling to multiple accounts requires manual effort
+## The Problem
 
-**CloudSecure is different.** It runs **100% serverless inside AWS** — no CLI, no laptops, no credentials to share:
+Traditional security tools (Prowler, ScoutSuite, Steampipe) run from an engineer's laptop:
 
-- **Delegated access via IAM roles**: Customers grant a read-only role to the CloudSecure account using `STS AssumeRole` with `ExternalId`. No credentials are ever exchanged — only trust is delegated.
-- **Fully serverless**: Lambda, Step Functions, DynamoDB, S3 — nothing to install, patch, or maintain. The platform lives natively in AWS.
-- **Auditable by design**: Every assessment is tracked in DynamoDB with a full execution trail through Step Functions. Customers can see exactly what was accessed and when.
-- **Safe for customers**: Granting a cross-account read-only role is reversible, auditable (CloudTrail), and follows AWS best practices. Handing over access keys is none of those things.
+- Long-lived credentials (access keys) required
+- Credentials travel over the wire and get stored locally
+- No audit trail of who ran what and when
+- Scaling to multiple accounts = manual effort
 
-## Overview
+## How CloudSecure Is Different
 
-CloudSecure combines open-source security tools (Prowler), custom analysis modules, and AI-powered synthesis (AWS Bedrock Claude) to deliver actionable security insights for AWS environments.
+CloudSecure runs **100% serverless inside AWS**. No CLI, no laptops, no credentials to share.
 
-### Key Features
-
-- **100% Serverless**: Runs natively in AWS — no CLI, no infrastructure to manage
-- **No Credentials Shared**: Cross-account access via IAM role delegation, not access keys
-- **Agentless**: No software deployment required in customer accounts
-- **AI-Powered**: Bedrock Claude synthesizes findings into actionable intelligence
-- **Compliance-Ready**: Maps to CIS AWS 1.4, NIST 800-53, ISO 27001, GDPR, SOC2
-- **Portable**: Can assess any AWS account with read permissions
-- **Gap Detection**: Missing security services are findings, not blockers
+- **Delegated access via IAM roles** — customers grant a read-only role via `STS AssumeRole` with `ExternalId`. No credentials exchanged, only trust delegated.
+- **Fully serverless** — Lambda, Step Functions, DynamoDB, S3. Nothing to install, patch, or maintain.
+- **AI-powered synthesis** — 7 analyzers run in parallel, Bedrock Claude synthesizes raw findings into prioritized, actionable intelligence.
+- **Auditable by design** — every assessment tracked in DynamoDB with full execution trail through Step Functions.
 
 ## Report Demo
 
@@ -50,74 +51,51 @@ CloudSecure generates professional HTML reports with AI-powered executive summar
 
 > Screenshots generated with fictitious data. See `docs/generate_demo_report.py` to regenerate.
 
-## Project Information
-
-| Field | Value |
-|-------|-------|
-| **Development** | SDD (Specification-Driven Development) |
-| **Version** | 1.0.0 (Production Ready) |
-| **License** | Apache-2.0 |
-
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                  CloudSecure Platform                        │
-│  ┌─────────┐  ┌──────────────┐  ┌─────────────────────────┐ │
-│  │   API   │──│ Step Functions│──│    Lambda Functions     │ │
-│  │ Gateway │  │ Orchestrator  │  │ (Analyzers + Prowler)   │ │
-│  └─────────┘  └──────────────┘  └─────────────────────────┘ │
-│       │              │                      │                │
-│  ┌─────────┐  ┌──────────────┐  ┌─────────────────────────┐ │
-│  │DynamoDB │  │   Bedrock    │  │      S3 Reports         │ │
-│  └─────────┘  │   Claude     │  └─────────────────────────┘ │
-│               └──────────────┘                               │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                   CloudSecure Platform                        │
+│                                                              │
+│  ┌──────────┐  ┌───────────────┐  ┌────────────────────────┐ │
+│  │   API    │──│ Step Functions │──│   7 Lambda Analyzers   │ │
+│  │ Gateway  │  │  Orchestrator  │  │   (parallel execution) │ │
+│  └──────────┘  └───────────────┘  └────────────────────────┘ │
+│       │               │                      │               │
+│  ┌──────────┐  ┌───────────────┐  ┌────────────────────────┐ │
+│  │ DynamoDB │  │   Bedrock     │  │    S3 Reports          │ │
+│  │          │  │   Claude AI   │  │  (HTML/JSON/CSV)       │ │
+│  └──────────┘  └───────────────┘  └────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
                           │
                     STS AssumeRole
+                     (read-only)
                           ▼
-              ┌─────────────────────┐
-              │  Customer Account   │
-              │ (Read-Only Access)  │
-              └─────────────────────┘
+              ┌──────────────────────┐
+              │   Customer Account   │
+              │  (no agents needed)  │
+              └──────────────────────┘
 ```
 
-## Technology Stack
+## Analyzers
 
-| Component | Technology |
-|-----------|------------|
-| Infrastructure | CDK (TypeScript) |
-| Lambda Runtime | Python 3.12 |
-| Orchestration | AWS Step Functions |
-| API | API Gateway REST |
-| Database | DynamoDB |
-| Storage | S3 + KMS |
-| AI | AWS Bedrock Claude 3.5 |
-| Security Scanner | Prowler 5.x (Lambda Container) |
-| Reports | HTML, JSON, CSV (Jinja2 templates) |
-| CLI | Python (click, rich, boto3) — `pip install cloudsecure` |
+| Analyzer | What It Checks |
+|----------|---------------|
+| **IAM** | Users, roles, policies, MFA, unused credentials, password policy |
+| **Network** | Security groups, VPCs, Flow Logs, public exposure |
+| **S3** | Public buckets, encryption, logging, versioning |
+| **Encryption** | EBS, RDS, EFS encryption at rest |
+| **CloudTrail** | Trail configuration, root usage, metric filters |
+| **Native Services** | SecurityHub, GuardDuty, Config findings (if enabled) |
+| **Prowler** | CIS AWS 1.4 benchmarks (17 critical checks) |
 
-### Active Analyzers
+All analyzers run in parallel via Step Functions. Missing security services are reported as findings, not blockers.
 
-| Analyzer | Description | Status |
-|----------|-------------|--------|
-| IAM Analyzer | Users, roles, policies, MFA, credentials | Active |
-| Network Analyzer | Security groups, VPCs, Flow Logs | Active |
-| S3 Analyzer | Public buckets, encryption, logging | Active |
-| Encryption Analyzer | EBS, RDS, EFS encryption | Active |
-| CloudTrail Analyzer | Trail config, root usage, metric filters | Active |
-| Native Service Puller | SecurityHub, GuardDuty, Config findings | Active |
-| Prowler Scanner | CIS AWS benchmarks (17 critical checks) | Active |
+## Compliance Mapping
 
-## Branch Strategy
+Findings map to: **CIS AWS 1.4** · **NIST 800-53** · **ISO 27001** · **GDPR** · **SOC2**
 
-| Branch | Environment | AWS Account | Purpose |
-|--------|-------------|-------------|---------|
-| `dev` | Development | Local/Dev | Feature development, local testing |
-| `test` | Testing | Test Account | Integration tests, QA validation |
-| `main` | Production | Prod Account | Production deployments |
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
@@ -158,6 +136,16 @@ make install && make deploy
 SKIP_PROWLER=true make deploy
 ```
 
+### Onboard a Customer Account
+
+```bash
+aws cloudformation deploy \
+  --template-file onboarding/cloudformation/cloudsecure-role.yaml \
+  --stack-name CloudSecure-AssessmentRole \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides ExternalId=your-external-id
+```
+
 ### Run an Assessment
 
 ```bash
@@ -180,27 +168,29 @@ cloudsecure --profile YOUR_PROFILE report <ASSESSMENT_ID> --format html --open
 cloudsecure --profile YOUR_PROFILE report <ASSESSMENT_ID> --format json -o report.json
 ```
 
-### Customer Onboarding
+### Reports
 
-Create an assessment role in the target account:
-
-```bash
-aws cloudformation deploy \
-  --template-file onboarding/cloudformation/cloudsecure-role.yaml \
-  --stack-name CloudSecure-AssessmentRole \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides ExternalId=your-external-id
+```
+s3://cloudsecure-reports-ACCOUNT_ID/assessments/ASSESSMENT_ID/
+├── report.html    # Executive report with AI synthesis
+├── report.json    # Full findings export
+└── report.csv     # Spreadsheet format
 ```
 
-### Reports Location
+## Tech Stack
 
-After assessment completes, reports are stored in S3:
-```
-s3://cloudsecure-reports-ACCOUNT_ID-dev/assessments/ASSESSMENT_ID/
-├── report.html    # Professional HTML report
-├── report.json    # Full JSON export
-└── report.csv     # CSV export for spreadsheets
-```
+| Component | Technology |
+|-----------|-----------|
+| Infrastructure | AWS CDK (TypeScript) |
+| Analyzers | Python 3.12 (Lambda) |
+| Orchestration | AWS Step Functions |
+| API | API Gateway REST (IAM auth) |
+| Database | DynamoDB |
+| Storage | S3 + KMS encryption |
+| AI Synthesis | AWS Bedrock (Claude) |
+| Security Scanner | Prowler 5.x (Lambda container, optional) |
+| Reports | HTML, JSON, CSV (Jinja2 templates) |
+| CLI | Python (click, rich, boto3) — `pip install cloudsecure` |
 
 ## Documentation
 
@@ -211,4 +201,4 @@ s3://cloudsecure-reports-ACCOUNT_ID-dev/assessments/ASSESSMENT_ID/
 
 ## License
 
-Apache-2.0 - See [LICENSE](./LICENSE)
+Apache-2.0 — See [LICENSE](./LICENSE)
