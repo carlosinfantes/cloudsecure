@@ -20,6 +20,11 @@ CLOUDSECURE_ENV ?= dev
 PROWLER_IMAGE  ?= carlosinfantes/cloudsecure-prowler:latest
 SKIP_PROWLER   ?= false
 
+# Container runtime auto-detection (Docker preferred, Podman fallback)
+CONTAINER_CMD  := $(shell \
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then echo docker; \
+  elif command -v podman >/dev/null 2>&1; then echo podman; fi)
+
 INFRA_DIR      := infrastructure
 LAMBDAS_DIR    := lambdas
 LAYER_DIR      := $(LAMBDAS_DIR)/layer
@@ -47,7 +52,12 @@ install: ## Install all dependencies (npm + pip)
 	@echo "Installing infrastructure dependencies..."
 	@cd $(INFRA_DIR) && npm ci --silent
 	@echo "Installing Python dependencies..."
-	@cd $(LAMBDAS_DIR) && pip install -e ".[dev]" --quiet 2>/dev/null || true
+	@if python3 -c "import pytest, pydantic, boto3, ruff, dateutil" 2>/dev/null; then \
+		echo "  Python packages already satisfied (system/apt)"; \
+	else \
+		echo "  Installing via pip..."; \
+		cd $(LAMBDAS_DIR) && pip install -e ".[dev]" --quiet 2>/dev/null || true; \
+	fi
 	@echo "Dependencies installed."
 
 # ─── Build ──────────────────────────────────────────────────
@@ -58,14 +68,14 @@ build: ## Compile TypeScript CDK code
 layer: ## Build Lambda shared layer (Docker preferred, pip fallback)
 	@echo "Building Lambda layer..."
 	@mkdir -p $(LAYER_DIR)/python
-	@if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then \
-		echo "  Using Docker for Linux-compatible binaries"; \
-		cd $(LAMBDAS_DIR) && docker run --rm --platform linux/amd64 --entrypoint /bin/bash \
+	@if [ -n "$(CONTAINER_CMD)" ]; then \
+		echo "  Using $(CONTAINER_CMD) for Linux-compatible binaries"; \
+		cd $(LAMBDAS_DIR) && $(CONTAINER_CMD) run --rm --platform linux/amd64 --entrypoint /bin/bash \
 			-v "$$(pwd)/layer:/layer" \
 			public.ecr.aws/lambda/python:3.12 \
 			-c "pip install pydantic jinja2 boto3 python-dateutil --target /layer/python/ --no-cache-dir --quiet"; \
 	else \
-		echo "  WARNING: Docker not available. Using pip (may not work on Lambda)."; \
+		echo "  WARNING: No container runtime available. Using pip (may not work on Lambda)."; \
 		pip install pydantic jinja2 boto3 python-dateutil -t $(LAYER_DIR)/python/ --no-cache-dir --quiet; \
 	fi
 	@cp -r $(LAMBDAS_DIR)/shared $(LAMBDAS_DIR)/analyzers $(LAYER_DIR)/python/
@@ -83,10 +93,10 @@ else
 		--region $(AWS_REGION) --profile $(AWS_PROFILE) \
 		--image-scanning-configuration scanOnPush=true >/dev/null
 	@aws ecr get-login-password --region $(AWS_REGION) --profile $(AWS_PROFILE) | \
-		docker login --username AWS --password-stdin $(ECR_URI) 2>/dev/null
-	@docker pull --platform linux/amd64 $(PROWLER_IMAGE) --quiet
-	@docker tag $(PROWLER_IMAGE) $(ECR_URI)/$(ECR_REPO):latest
-	@docker push $(ECR_URI)/$(ECR_REPO):latest --quiet
+		$(CONTAINER_CMD) login --username AWS --password-stdin $(ECR_URI) 2>/dev/null
+	@$(CONTAINER_CMD) pull --platform linux/amd64 $(PROWLER_IMAGE) --quiet
+	@$(CONTAINER_CMD) tag $(PROWLER_IMAGE) $(ECR_URI)/$(ECR_REPO):latest
+	@$(CONTAINER_CMD) push $(ECR_URI)/$(ECR_REPO):latest --quiet
 	@echo "Prowler image pushed to ECR."
 endif
 
