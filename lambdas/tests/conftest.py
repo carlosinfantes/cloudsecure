@@ -2,9 +2,11 @@
 
 import os
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
+from unittest.mock import MagicMock
 from uuid import uuid4
 
+import boto3
 import pytest
 
 # Add lambdas directory to Python path
@@ -13,6 +15,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # Set AWS region for tests
 os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
 os.environ["AWS_REGION"] = "eu-west-1"
+# Prevent real AWS calls from moto tests
+os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+os.environ["AWS_SECURITY_TOKEN"] = "testing"
+os.environ["AWS_SESSION_TOKEN"] = "testing"
 
 
 @pytest.fixture
@@ -70,3 +77,9 @@ def dynamodb_assessment_item(assessment_id, account_id, role_arn, external_id):
         "scope": ["all"],
         "complianceFrameworks": [],
     }
+
+
+@pytest.fixture
+def mock_boto3_session():
+    """A MagicMock boto3.Session for analyzer tests."""
+    return MagicMock(spec=boto3.Session)
