@@ -210,12 +210,14 @@ class TestCloudTrailAnalyzerRootUsage:
             "Events": [
                 {
                     "EventName": "OrgAction",
-                    "CloudTrailEvent": json.dumps({
-                        "userIdentity": {
-                            "type": "Root",
-                            "sessionContext": {"assumedRoot": "true"},
+                    "CloudTrailEvent": json.dumps(
+                        {
+                            "userIdentity": {
+                                "type": "Root",
+                                "sessionContext": {"assumedRoot": "true"},
+                            }
                         }
-                    }),
+                    ),
                 },
             ]
         }
