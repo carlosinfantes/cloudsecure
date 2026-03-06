@@ -4,8 +4,6 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-import pytest
-
 from analyzers.iam_analyzer import IAMAnalyzer, handler
 from shared.models import FindingSeverity
 

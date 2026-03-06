@@ -308,5 +308,5 @@ class TestNetworkAnalyzerHandler:
     @patch("analyzers.network_analyzer.run_analyzer")
     def test_handler_delegates(self, mock_run):
         mock_run.return_value = {"success": True}
-        result = handler({"assessmentId": "test"}, None)
+        handler({"assessmentId": "test"}, None)
         mock_run.assert_called_once_with(NetworkAnalyzer, {"assessmentId": "test"})

@@ -4,7 +4,6 @@ import logging
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-import pytest
 from botocore.exceptions import ClientError
 
 from analyzers.base import BaseAnalyzer, run_analyzer
