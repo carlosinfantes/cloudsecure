@@ -87,7 +87,12 @@ class TestS3AnalyzerBucketChecks:
         analyzer = _make_analyzer()
         mock_s3 = MagicMock()
         mock_s3.get_bucket_encryption.side_effect = ClientError(
-            {"Error": {"Code": "ServerSideEncryptionConfigurationNotFoundError", "Message": "none"}},
+            {
+                "Error": {
+                    "Code": "ServerSideEncryptionConfigurationNotFoundError",
+                    "Message": "none",
+                }
+            },
             "GetBucketEncryption",
         )
 
@@ -142,11 +147,18 @@ class TestS3AnalyzerBucketChecks:
         analyzer = _make_analyzer()
         mock_s3 = MagicMock()
         mock_s3.get_bucket_policy.return_value = {
-            "Policy": json.dumps({
-                "Statement": [
-                    {"Effect": "Allow", "Principal": "*", "Action": "s3:GetObject", "Resource": "*"}
-                ]
-            })
+            "Policy": json.dumps(
+                {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": "*",
+                            "Action": "s3:GetObject",
+                            "Resource": "*",
+                        }
+                    ]
+                }
+            )
         }
 
         analyzer._check_bucket_policy(mock_s3, "test-bucket", "us-east-1")
@@ -158,16 +170,18 @@ class TestS3AnalyzerBucketChecks:
         analyzer = _make_analyzer()
         mock_s3 = MagicMock()
         mock_s3.get_bucket_policy.return_value = {
-            "Policy": json.dumps({
-                "Statement": [
-                    {
-                        "Effect": "Allow",
-                        "Principal": {"AWS": "arn:aws:iam::111111111111:root"},
-                        "Action": "s3:GetObject",
-                        "Resource": "*",
-                    }
-                ]
-            })
+            "Policy": json.dumps(
+                {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {"AWS": "arn:aws:iam::111111111111:root"},
+                            "Action": "s3:GetObject",
+                            "Resource": "*",
+                        }
+                    ]
+                }
+            )
         }
 
         analyzer._check_bucket_policy(mock_s3, "test-bucket", "us-east-1")
@@ -191,5 +205,5 @@ class TestS3AnalyzerHandler:
     @patch("analyzers.s3_analyzer.run_analyzer")
     def test_handler_delegates(self, mock_run):
         mock_run.return_value = {"success": True}
-        result = handler({"assessmentId": "test"}, None)
+        handler({"assessmentId": "test"}, None)
         mock_run.assert_called_once_with(S3Analyzer, {"assessmentId": "test"})

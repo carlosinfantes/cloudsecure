@@ -1,11 +1,8 @@
 """Tests for CloudTrail Analyzer."""
 
 import json
-from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
-
-from botocore.exceptions import ClientError
 
 from analyzers.cloudtrail_analyzer import CloudTrailAnalyzer, handler
 from shared.models import FindingSeverity
@@ -213,12 +210,14 @@ class TestCloudTrailAnalyzerRootUsage:
             "Events": [
                 {
                     "EventName": "OrgAction",
-                    "CloudTrailEvent": json.dumps({
-                        "userIdentity": {
-                            "type": "Root",
-                            "sessionContext": {"assumedRoot": "true"},
+                    "CloudTrailEvent": json.dumps(
+                        {
+                            "userIdentity": {
+                                "type": "Root",
+                                "sessionContext": {"assumedRoot": "true"},
+                            }
                         }
-                    }),
+                    ),
                 },
             ]
         }
@@ -308,5 +307,5 @@ class TestCloudTrailAnalyzerHandler:
     @patch("analyzers.cloudtrail_analyzer.run_analyzer")
     def test_handler_delegates(self, mock_run):
         mock_run.return_value = {"success": True}
-        result = handler({"assessmentId": "test"}, None)
+        handler({"assessmentId": "test"}, None)
         mock_run.assert_called_once_with(CloudTrailAnalyzer, {"assessmentId": "test"})

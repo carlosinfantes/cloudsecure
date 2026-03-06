@@ -4,8 +4,6 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-import pytest
-
 from analyzers.iam_analyzer import IAMAnalyzer, handler
 from shared.models import FindingSeverity
 
@@ -120,7 +118,11 @@ class TestIAMAnalyzerAccessKeys:
         recent_date = datetime.now(UTC) - timedelta(days=10)
         mock_iam.list_access_keys.return_value = {
             "AccessKeyMetadata": [
-                {"AccessKeyId": "AKIAIOSFODNN7EXAMPLE", "CreateDate": recent_date, "Status": "Active"}
+                {
+                    "AccessKeyId": "AKIAIOSFODNN7EXAMPLE",
+                    "CreateDate": recent_date,
+                    "Status": "Active",
+                }
             ]
         }
 
@@ -136,12 +138,19 @@ class TestIAMAnalyzerOverprivileged:
 
         mock_paginator = MagicMock()
         mock_paginator.paginate.return_value = [
-            {"Users": [{"UserName": "admin-user", "Arn": "arn:aws:iam::123456789012:user/admin-user"}]}
+            {
+                "Users": [
+                    {"UserName": "admin-user", "Arn": "arn:aws:iam::123456789012:user/admin-user"}
+                ]
+            }
         ]
         mock_iam.get_paginator.return_value = mock_paginator
         mock_iam.list_attached_user_policies.return_value = {
             "AttachedPolicies": [
-                {"PolicyName": "AdministratorAccess", "PolicyArn": "arn:aws:iam::aws:policy/AdministratorAccess"}
+                {
+                    "PolicyName": "AdministratorAccess",
+                    "PolicyArn": "arn:aws:iam::aws:policy/AdministratorAccess",
+                }
             ]
         }
 
@@ -164,7 +173,9 @@ class TestIAMAnalyzerOverprivileged:
                         "Arn": "arn:aws:iam::123456789012:role/open-role",
                         "Path": "/",
                         "AssumeRolePolicyDocument": {
-                            "Statement": [{"Effect": "Allow", "Principal": "*", "Action": "sts:AssumeRole"}]
+                            "Statement": [
+                                {"Effect": "Allow", "Principal": "*", "Action": "sts:AssumeRole"}
+                            ]
                         },
                     }
                 ]
@@ -191,7 +202,9 @@ class TestIAMAnalyzerOverprivileged:
                         "Arn": "arn:aws:iam::123456789012:role/aws-service-role/autoscaling",
                         "Path": "/aws-service-role/autoscaling.amazonaws.com/",
                         "AssumeRolePolicyDocument": {
-                            "Statement": [{"Effect": "Allow", "Principal": "*", "Action": "sts:AssumeRole"}]
+                            "Statement": [
+                                {"Effect": "Allow", "Principal": "*", "Action": "sts:AssumeRole"}
+                            ]
                         },
                     }
                 ]

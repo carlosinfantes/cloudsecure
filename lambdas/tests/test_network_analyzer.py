@@ -224,7 +224,9 @@ class TestNetworkAnalyzerVPC:
     def test_default_vpc_with_instances(self):
         analyzer = _make_analyzer()
         mock_ec2 = MagicMock()
-        mock_ec2.describe_vpcs.return_value = {"Vpcs": [{"VpcId": "vpc-default", "IsDefault": True}]}
+        mock_ec2.describe_vpcs.return_value = {
+            "Vpcs": [{"VpcId": "vpc-default", "IsDefault": True}]
+        }
         mock_ec2.describe_instances.return_value = {
             "Reservations": [{"Instances": [{"InstanceId": "i-123"}]}]
         }
@@ -237,7 +239,9 @@ class TestNetworkAnalyzerVPC:
     def test_default_vpc_no_instances(self):
         analyzer = _make_analyzer()
         mock_ec2 = MagicMock()
-        mock_ec2.describe_vpcs.return_value = {"Vpcs": [{"VpcId": "vpc-default", "IsDefault": True}]}
+        mock_ec2.describe_vpcs.return_value = {
+            "Vpcs": [{"VpcId": "vpc-default", "IsDefault": True}]
+        }
         mock_ec2.describe_instances.return_value = {"Reservations": []}
 
         analyzer._check_default_vpc(mock_ec2, "us-east-1")
@@ -308,5 +312,5 @@ class TestNetworkAnalyzerHandler:
     @patch("analyzers.network_analyzer.run_analyzer")
     def test_handler_delegates(self, mock_run):
         mock_run.return_value = {"success": True}
-        result = handler({"assessmentId": "test"}, None)
+        handler({"assessmentId": "test"}, None)
         mock_run.assert_called_once_with(NetworkAnalyzer, {"assessmentId": "test"})
