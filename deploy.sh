@@ -124,7 +124,7 @@ CLOUDSECURE_ENV=${CLOUDSECURE_ENV:-dev}
 
 # Prowler
 SKIP_PROWLER=false
-PROWLER_IMAGE="carlosinfantes/cloudsecure-prowler:latest"
+PROWLER_IMAGE="docker.io/carlosinfantes/cloudsecure-prowler:latest"
 if [ -z "$CONTAINER_CMD" ]; then
   SKIP_PROWLER=true
 else

@@ -17,7 +17,7 @@ endif
 AWS_PROFILE    ?= default
 AWS_REGION     ?= eu-west-1
 CLOUDSECURE_ENV ?= dev
-PROWLER_IMAGE  ?= carlosinfantes/cloudsecure-prowler:latest
+PROWLER_IMAGE  ?= docker.io/carlosinfantes/cloudsecure-prowler:latest
 SKIP_PROWLER   ?= false
 
 # Container runtime auto-detection (Docker preferred, Podman fallback)
