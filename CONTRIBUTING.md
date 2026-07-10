@@ -4,7 +4,7 @@
 
 - Node.js 18+
 - Python 3.12+
-- Docker
+- Docker or Podman
 - AWS CLI configured
 - [pre-commit](https://pre-commit.com/)
 - [gitleaks](https://github.com/gitleaks/gitleaks)
@@ -13,17 +13,70 @@
 
 ### 1. Install pre-commit hooks (mandatory)
 
+#### Gitleaks ####
 ```bash
-brew install pre-commit gitleaks
+# Option 1: Download the binary directly
+wget https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.21.2_linux_amd64.tar.gz
+tar -xzf gitleaks_8.21.2_linux_amd64.tar.gz
+sudo mv gitleaks /usr/local/bin/
+
+# Option 2: If you have Go installed
+go install github.com/gitleaks/gitleaks/v8@latest
+
+# Option 3: Use package manager
+brew install gitleaks
+sudo apt install gitleaks
+```
+
+Verify installation:
+```bash
+gitleaks version
+```
+
+#### pre-commit ####
+
+```bash
+brew install pre-commit # MacOS
+## On Linux use one of the methods below
+# sudo apt install pre-commit # Debian/Ubuntu
+# pip install pre-commit # PIP
 pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-### 2. Install dependencies and build
+Verify installation:
+```bash
+pre-commit --version
+```
+
+### 2. Build the Lambda layer
 
 ```bash
-make install   # Install CDK + Python dependencies
-make layer     # Build Lambda shared layer (uses Docker if available, pip fallback)
+cd lambdas
+# Use docker or podman
+docker run --rm --entrypoint /bin/bash \
+  -v "$(pwd)/layer:/layer" \
+  public.ecr.aws/lambda/python:3.12 \
+  -c "pip install pydantic jinja2 boto3 --target /layer/python/ --no-cache-dir"
+cp -r shared analyzers layer/python/
+```
+
+> **Tip:** `podman` can be used as a drop-in replacement for `docker` in the command above.
+
+### 3. Install dependencies
+
+```bash
+# CDK
+cd infrastructure && npm install
+
+# Python (option A: system packages)
+sudo apt install python3-pytest python3-pydantic python3-boto3 python3-dateutil
+
+# Python (option B: venv + pip)
+cd ../lambdas
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 ```
 
 ## Secret Scanning Policy
@@ -40,58 +93,13 @@ Pre-commit hooks enforce the following on every commit:
 
 If a hook blocks your commit, fix the issue before committing. Never use `--no-verify` to bypass hooks.
 
-## Testing & Validation
-
-### Running tests
-
-```bash
-make test    # Run CDK (jest) + Python (pytest) tests
-make lint    # Check Python code style (ruff + black)
-```
-
-Or individually:
-
-```bash
-cd lambdas && python -m pytest tests/ -v              # Python unit tests
-cd infrastructure && npm test                          # CDK snapshot tests
-cd lambdas && ruff check . && black --check .          # Linting
-```
-
-### What gets tested
-
-| Area | Tool | Coverage |
-|------|------|----------|
-| Shared models (Assessment, Finding, CRF) | pytest + moto | `lambdas/tests/test_models.py`, `test_crf_models.py` |
-| AWS client (STS AssumeRole, regions) | pytest + moto | `lambdas/tests/test_aws_client.py` |
-| CDK stack synthesis | jest | `infrastructure/test/` |
-| Python code style | ruff + black | All files in `lambdas/` |
-| Secrets in code | gitleaks + custom hooks | Every commit (pre-commit) |
-| Secrets in CI | gitleaks GitHub Action | Every push and PR |
-
-### What runs automatically
-
-**On every commit** (pre-commit hooks):
-- Trailing whitespace, end-of-file, YAML/JSON/TOML validation
-- Secret scanning (gitleaks)
-- Block real AWS account IDs, internal emails, private keys
-- Block commits directly to `main`
-- Python formatting (ruff + black on `lambdas/`)
-
-**On every push/PR** (GitHub Actions):
-- gitleaks secret scan (`.github/workflows/secrets-scan.yml`)
-
 ## Pull Request Checklist
 
 - [ ] Pre-commit hooks pass (`pre-commit run --all-files`)
-- [ ] Tests pass (`make test`)
-- [ ] Linting passes (`make lint`)
 - [ ] No real AWS account IDs or credentials in any file
 - [ ] Lambda layer vendored files are NOT committed (`lambdas/layer/python/`)
-- [ ] CDK synthesizes successfully (`make synth`)
-
-## Commits
-
-Use conventional commit messages: `Fix ...`, `Add ...`, `Update ...`, `Refactor ...`.
+- [ ] Tests pass (`cd lambdas && pytest`)
+- [ ] CDK synthesizes successfully (`cd infrastructure && npm run build && npx cdk synth`)
 
 ## Branch Strategy
 

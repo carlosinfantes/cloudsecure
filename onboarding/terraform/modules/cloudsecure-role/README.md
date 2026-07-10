@@ -78,5 +78,6 @@ The role can read data from the following services:
 - IAM Access Analyzer
 - Amazon Inspector
 - Amazon Macie
+- Amazon EKS
 - AWS Organizations (read-only)
 - All services covered by ReadOnlyAccess and SecurityAudit policies

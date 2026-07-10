@@ -29,6 +29,9 @@ dev = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["shared", "analyzers", "api_handlers", "ai_synthesis", "prowler_scanner", "report_generator", "validate_role", "discovery_module"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"
@@ -50,4 +53,4 @@ disallow_untyped_defs = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=shared --cov-report=term-missing"
+addopts = "-v --cov=shared --cov=ai_synthesis --cov=analyzers --cov=api_handlers --cov=prowler_scanner --cov-report=term-missing"

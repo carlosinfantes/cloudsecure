@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+jobs:
+  python:
+    name: Python tests & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install ruff==0.4.9
+          pip install -e ".[dev]"
+        working-directory: lambdas
+
+      - name: Ruff lint
+        run: ruff check .
+        working-directory: lambdas
+
+      - name: Black format check
+        run: black --check .
+        working-directory: lambdas
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
+        working-directory: lambdas
+
+  cdk:
+    name: CDK build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: infrastructure
+
+      - name: Build TypeScript
+        run: npm run build
+        working-directory: infrastructure
+
+      - name: Run tests
+        run: npm test
+        working-directory: infrastructure

@@ -5,7 +5,7 @@
 
 <p align="center">
   <a href="https://github.com/carlosinfantes/cloudsecure/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/version-0.2.0-green.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.3.0-green.svg" alt="Version">
   <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/CDK-TypeScript-orange.svg" alt="CDK">
   <img src="https://img.shields.io/badge/AI-Bedrock%20Claude-blueviolet.svg" alt="AI">
@@ -101,7 +101,7 @@ Findings map to: **CIS AWS 1.4** · **NIST 800-53** · **ISO 27001** · **GDPR**
 
 - AWS CLI configured with an IAM profile
 - Node.js 18+ and Python 3.12+
-- Docker (optional — required for Prowler CIS scanner)
+- Docker or Podman (optional — required for Prowler CIS scanner)
 
 ### Install the CLI
 
@@ -132,7 +132,7 @@ Or manually:
 cp .env.example .env    # Edit with your AWS profile, region, etc.
 make install && make deploy
 
-# Deploy without Docker/Prowler
+# Deploy without Docker/Podman (skips Prowler)
 SKIP_PROWLER=true make deploy
 ```
 

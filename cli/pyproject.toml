@@ -41,6 +41,17 @@ Issues = "https://github.com/carlosinfantes/cloudsecure/issues"
 [project.scripts]
 cloudsecure = "cloudsecure.main:cli"
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=cloudsecure --cov-report=term-missing"
+
 [tool.setuptools.dynamic]
 version = { attr = "cloudsecure.__version__" }
 

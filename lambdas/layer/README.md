@@ -1,11 +1,12 @@
 # Lambda Layer
 
-The `python/` directory is not tracked in git. Dependencies are built using Docker to ensure correct Linux binaries.
+The `python/` directory is not tracked in git. Dependencies are built using Docker or Podman to ensure correct Linux binaries.
 
 ## Build
 
 ```bash
 cd lambdas
+# Use docker or podman
 docker run --rm --entrypoint /bin/bash \
   -v "$(pwd)/layer:/layer" \
   public.ecr.aws/lambda/python:3.12 \

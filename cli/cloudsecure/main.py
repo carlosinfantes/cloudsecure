@@ -12,7 +12,7 @@ from rich.table import Table
 
 from . import __version__
 from .api import CloudSecureAPI
-from .config import resolve_api_endpoint
+from .config import invalidate_endpoint, resolve_api_endpoint
 
 console = Console()
 
@@ -39,6 +39,24 @@ def _build_client(profile, region, env_name) -> CloudSecureAPI:
     """Build a SigV4-signed API client."""
     endpoint = resolve_api_endpoint(profile=profile, region=region, env_name=env_name)
     return CloudSecureAPI(endpoint, profile=profile, region=region)
+
+
+def _with_retry(ctx, fn):
+    """Call fn(client), retrying once on ConnectionError after refreshing the cached endpoint."""
+    import requests as _requests
+
+    profile = ctx.obj["profile"]
+    region = ctx.obj["region"]
+    env_name = ctx.obj["env_name"]
+
+    client = _build_client(profile, region, env_name)
+    try:
+        return fn(client)
+    except _requests.exceptions.ConnectionError:
+        console.print("[yellow]Connection failed — refreshing API endpoint from CloudFormation...[/yellow]")
+        invalidate_endpoint(env_name=env_name, region=region)
+        client = _build_client(profile, region, env_name)
+        return fn(client)
 
 
 @click.group()
@@ -69,8 +87,6 @@ def cli(ctx, profile, region, env_name):
 @click.pass_context
 def assess(ctx, account_id, role_arn, external_id, customer_id, scope, no_wait):
     """Start a new security assessment."""
-    client = _build_client(ctx.obj["profile"], ctx.obj["region"], ctx.obj["env_name"])
-
     body = {
         "accountId": account_id,
         "roleArn": role_arn,
@@ -82,7 +98,7 @@ def assess(ctx, account_id, role_arn, external_id, customer_id, scope, no_wait):
         body["scope"] = list(scope)
 
     try:
-        result = client.post("assessments", body)
+        result = _with_retry(ctx, lambda c: c.post("assessments", body))
     except RuntimeError as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)
@@ -94,7 +110,8 @@ def assess(ctx, account_id, role_arn, external_id, customer_id, scope, no_wait):
         console.print(f"Run [cyan]cloudsecure status {assessment_id}[/cyan] to check progress.")
         return
 
-    # Poll for completion
+    # Poll for completion — use a fresh client (endpoint already validated by the post above)
+    client = _build_client(ctx.obj["profile"], ctx.obj["region"], ctx.obj["env_name"])
     console.print("")
     with Progress(
         SpinnerColumn(),
@@ -131,11 +148,9 @@ def assess(ctx, account_id, role_arn, external_id, customer_id, scope, no_wait):
 @click.pass_context
 def status(ctx, assessment_id):
     """Show assessment status or list all assessments."""
-    client = _build_client(ctx.obj["profile"], ctx.obj["region"], ctx.obj["env_name"])
-
     if assessment_id:
         try:
-            data = client.get(f"assessments/{assessment_id}")
+            data = _with_retry(ctx, lambda c: c.get(f"assessments/{assessment_id}"))
         except RuntimeError as e:
             console.print(f"[red]Error:[/red] {e}")
             sys.exit(1)
@@ -143,7 +158,7 @@ def status(ctx, assessment_id):
         _print_assessment_summary(data)
     else:
         try:
-            data = client.get("assessments")
+            data = _with_retry(ctx, lambda c: c.get("assessments"))
         except RuntimeError as e:
             console.print(f"[red]Error:[/red] {e}")
             sys.exit(1)
@@ -188,10 +203,8 @@ def status(ctx, assessment_id):
 @click.pass_context
 def report(ctx, assessment_id, fmt, output_path, open_browser):
     """Download an assessment report."""
-    client = _build_client(ctx.obj["profile"], ctx.obj["region"], ctx.obj["env_name"])
-
     try:
-        data = client.get(f"assessments/{assessment_id}/report?format={fmt}")
+        data = _with_retry(ctx, lambda c: c.get(f"assessments/{assessment_id}/report?format={fmt}"))
     except RuntimeError as e:
         console.print(f"[red]Error:[/red] {e}")
         sys.exit(1)

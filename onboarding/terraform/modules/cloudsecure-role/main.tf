@@ -164,6 +164,25 @@ resource "aws_iam_role_policy" "security_services" {
         Resource = "*"
       },
 
+      # EKS access
+      {
+        Sid    = "EKSAccess"
+        Effect = "Allow"
+        Action = [
+          "eks:ListClusters",
+          "eks:DescribeCluster",
+          "eks:ListNodegroups",
+          "eks:DescribeNodegroup",
+          "eks:ListAddons",
+          "eks:DescribeAddon",
+          "eks:ListFargateProfiles",
+          "eks:DescribeFargateProfile",
+          "eks:DescribeUpdate",
+          "eks:ListTagsForResource"
+        ]
+        Resource = "*"
+      },
+
       # Organizations read access
       {
         Sid    = "OrganizationsAccess"
