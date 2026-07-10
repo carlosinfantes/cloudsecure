@@ -268,8 +268,8 @@ export class OrchestrationStack extends cdk.Stack {
       tracingEnabled: true,
       logs: {
         destination: logGroup,
-        level: sfn.LogLevel.ALL,
-        includeExecutionData: true,
+        level: envName === 'prod' ? sfn.LogLevel.ERROR : sfn.LogLevel.ALL,
+        includeExecutionData: envName !== 'prod',
       },
     });
 

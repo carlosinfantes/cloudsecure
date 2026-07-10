@@ -4,7 +4,7 @@
 **Author**: CloudSecure Contributors
 **Started**: 2025-01-23
 **Current Sprint**: Deployed & Operational
-**Last Deployment**: 2026-03-04 (Region: eu-west-1)
+**Last Deployment**: 2026-03-05 (Region: eu-west-1)
 
 ---
 
@@ -24,10 +24,13 @@
 - [x] Python CLI tool (`pip install cloudsecure`) with SigV4-signed API calls
 - [x] PyPI packaging with `pyproject.toml`, GitHub Actions publish workflow
 - [x] `install.sh` — curl-downloadable CLI installer
-- [x] `deploy.sh` — interactive infrastructure deployment script
+- [x] `deploy.sh` — interactive deployment with `--upgrade` and `--setup-role` flags
+- [x] `destroy.sh` — interactive teardown with multi-layer confirmation
 - [x] Makefile with build, deploy, test, lint targets
 - [x] `.env.example` configuration template
 - [x] Prowler made optional (`SKIP_PROWLER=true`, `skipProwler` CDK context)
+- [x] Runtime `--scope` filtering for targeted assessments
+- [x] CLI v0.2.0: scope filtering, improved error messages
 - [x] Bug fixes: DynamoDB Decimal serialization, presigned URL SigV4, reportS3Key persistence, format validation
 
 ---
@@ -309,8 +312,6 @@
 ## First Successful Assessment
 
 **Date**: 2026-01-23
-**Assessment ID**: `EXAMPLE-UUID`
-**Target Account**: 123456789012 (example)
 
 ### Results
 | Metric | Value |
@@ -326,10 +327,7 @@
 1. **[HIGH]** No CloudTrail trail logging management events
 2. **[HIGH]** Root account used 43 times in last 90 days
 
-### Reports Generated
-- `s3://cloudsecure-reports-ACCOUNT_ID-dev/assessments/ASSESSMENT_ID/report.html`
-- `s3://cloudsecure-reports-ACCOUNT_ID-dev/assessments/ASSESSMENT_ID/report.json`
-- `s3://cloudsecure-reports-ACCOUNT_ID-dev/assessments/ASSESSMENT_ID/report.csv`
+Reports generated in HTML, JSON, and CSV formats via pre-signed S3 URLs.
 
 ---
 

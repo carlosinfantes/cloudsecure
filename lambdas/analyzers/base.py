@@ -19,6 +19,15 @@ from shared.models import ComplianceMapping, Finding, FindingSeverity, Remediati
 
 logger = logging.getLogger()
 
+# Maps analyzer names to the scopes they belong to
+ANALYZER_SCOPES = {
+    "iam_analyzer": ["iam"],
+    "network_analyzer": ["network", "ec2", "vpc"],
+    "s3_analyzer": ["s3"],
+    "encryption_analyzer": ["encryption"],
+    "cloudtrail_analyzer": ["cloudtrail"],
+}
+
 
 class BaseAnalyzer(ABC):
     """Base class for security analyzers."""
@@ -117,6 +126,22 @@ def run_analyzer(
     role_arn = event.get("roleArn")
     external_id = event.get("externalId")
     regions = event.get("regions", ["us-east-1"])
+    scope = event.get("scope", ["all"])
+
+    # Skip analyzer if not in requested scope
+    analyzer_name = analyzer_class.__name__.lower()
+    if "all" not in scope:
+        analyzer_scopes = ANALYZER_SCOPES.get(analyzer_name, [])
+        if not any(s in scope for s in analyzer_scopes):
+            logger.info(f"Skipping {analyzer_name} — not in scope {scope}")
+            return {
+                "success": True,
+                "analyzer": analyzer_name,
+                "assessmentId": assessment_id,
+                "findingsCount": 0,
+                "findings": [],
+                "skipped": True,
+            }
 
     logger.info(f"Running {analyzer_class.__name__} for assessment {assessment_id}")
 

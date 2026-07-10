@@ -81,9 +81,11 @@ def cli(ctx, profile, region, env_name):
 @click.option("--role-arn", required=True, help="IAM role ARN for assessment access")
 @click.option("--external-id", required=True, help="External ID for role assumption")
 @click.option("--customer-id", default=None, help="Optional customer identifier")
+@click.option("--scope", multiple=True, default=None,
+              help="Scan scope: iam, s3, network, encryption, cloudtrail, ec2, rds, vpc. Repeat for multiple. Default: all")
 @click.option("--no-wait", is_flag=True, help="Don't wait for completion")
 @click.pass_context
-def assess(ctx, account_id, role_arn, external_id, customer_id, no_wait):
+def assess(ctx, account_id, role_arn, external_id, customer_id, scope, no_wait):
     """Start a new security assessment."""
     body = {
         "accountId": account_id,
@@ -92,6 +94,8 @@ def assess(ctx, account_id, role_arn, external_id, customer_id, no_wait):
     }
     if customer_id:
         body["customerId"] = customer_id
+    if scope:
+        body["scope"] = list(scope)
 
     try:
         result = _with_retry(ctx, lambda c: c.post("assessments", body))

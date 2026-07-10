@@ -31,7 +31,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     Returns:
         Pre-signed URL for downloading the report
     """
-    logger.info(f"Received request: {json.dumps(event)}")
+    logger.info("Received request: method=%s path=%s", event.get("httpMethod"), event.get("path"))
 
     try:
         # Get assessment ID from path parameters
@@ -43,13 +43,13 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         # Get format from query parameters
         query_params = event.get("queryStringParameters", {}) or {}
-        report_format = query_params.get("format", "pdf").lower()
+        report_format = query_params.get("format", "html").lower()
 
         if report_format not in ["html", "json", "csv"]:
             return api_response(
                 400,
                 {
-                    "error": "Invalid format. Must be pdf, json, or csv.",
+                    "error": "Invalid format. Must be html, json, or csv.",
                 },
             )
 
@@ -133,7 +133,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                     404,
                     {
                         "error": f"Report in {report_format} format not available.",
-                        "availableFormats": ["pdf"],  # Default available
+                        "availableFormats": ["html", "json", "csv"],
                     },
                 )
             raise

@@ -34,7 +34,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     Returns:
         Assessment details including status, progress, and finding counts
     """
-    logger.info(f"Received request: {json.dumps(event)}")
+    logger.info("Received request: method=%s path=%s", event.get("httpMethod"), event.get("path"))
 
     try:
         # Get assessment ID from path parameters

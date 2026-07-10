@@ -32,13 +32,16 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     Returns:
         List of assessments with pagination
     """
-    logger.info(f"Received request: {json.dumps(event)}")
+    logger.info("Received request: method=%s path=%s", event.get("httpMethod"), event.get("path"))
 
     try:
         # Get query parameters
         query_params = event.get("queryStringParameters", {}) or {}
         account_id = query_params.get("accountId")
-        limit = min(int(query_params.get("limit", 50)), 100)
+        try:
+            limit = min(int(query_params.get("limit", 50)), 100)
+        except (ValueError, TypeError):
+            return api_response(400, {"error": "Invalid limit parameter. Must be an integer."})
         next_token = query_params.get("nextToken")
 
         dynamodb = boto3.resource("dynamodb")

@@ -102,6 +102,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "roleArn": role_arn,
             "externalId": external_id,
             "regions": regions,
+            "scope": event.get("scope", ["all"]),
             "resources": resources,
             "securityServices": security_services,
             "gaps": gaps,

@@ -63,19 +63,8 @@ export class LambdaStack extends cdk.Stack {
       effect: iam.Effect.ALLOW,
       actions: ['sts:AssumeRole'],
       resources: ['arn:aws:iam::*:role/CloudSecure*'],
-      conditions: {
-        StringEquals: {
-          'sts:ExternalId': '${aws:PrincipalTag/ExternalId}',
-        },
-      },
     });
 
-    // More permissive assume role for now (will tighten in production)
-    const assumeRolePolicy = new iam.PolicyStatement({
-      effect: iam.Effect.ALLOW,
-      actions: ['sts:AssumeRole'],
-      resources: ['*'],
-    });
 
     // Shared Lambda layer for common dependencies
     // Note: For local development without Docker, the layer is created from the shared directory
@@ -106,7 +95,7 @@ export class LambdaStack extends cdk.Stack {
     // Grant permissions to validate role lambda
     assessmentsTable.grantReadWriteData(this.validateRoleLambda);
     encryptionKey.grantEncryptDecrypt(this.validateRoleLambda);
-    this.validateRoleLambda.addToRolePolicy(assumeRolePolicy);
+    this.validateRoleLambda.addToRolePolicy(crossAccountAssumePolicy);
 
     // Discovery Module Lambda
     this.discoveryModuleLambda = new lambda.Function(this, 'DiscoveryModuleLambda', {
@@ -130,7 +119,7 @@ export class LambdaStack extends cdk.Stack {
     assessmentsTable.grantReadWriteData(this.discoveryModuleLambda);
     findingsTable.grantWriteData(this.discoveryModuleLambda);
     encryptionKey.grantEncryptDecrypt(this.discoveryModuleLambda);
-    this.discoveryModuleLambda.addToRolePolicy(assumeRolePolicy);
+    this.discoveryModuleLambda.addToRolePolicy(crossAccountAssumePolicy);
 
     // ==================== Analyzer Lambdas ====================
 
@@ -156,7 +145,7 @@ export class LambdaStack extends cdk.Stack {
       logRetention: logs.RetentionDays.ONE_MONTH,
       tracing: lambda.Tracing.ACTIVE,
     });
-    this.iamAnalyzerLambda.addToRolePolicy(assumeRolePolicy);
+    this.iamAnalyzerLambda.addToRolePolicy(crossAccountAssumePolicy);
 
     // Network Analyzer Lambda
     this.networkAnalyzerLambda = new lambda.Function(this, 'NetworkAnalyzerLambda', {
@@ -171,7 +160,7 @@ export class LambdaStack extends cdk.Stack {
       logRetention: logs.RetentionDays.ONE_MONTH,
       tracing: lambda.Tracing.ACTIVE,
     });
-    this.networkAnalyzerLambda.addToRolePolicy(assumeRolePolicy);
+    this.networkAnalyzerLambda.addToRolePolicy(crossAccountAssumePolicy);
 
     // S3 Analyzer Lambda
     this.s3AnalyzerLambda = new lambda.Function(this, 'S3AnalyzerLambda', {
@@ -186,7 +175,7 @@ export class LambdaStack extends cdk.Stack {
       logRetention: logs.RetentionDays.ONE_MONTH,
       tracing: lambda.Tracing.ACTIVE,
     });
-    this.s3AnalyzerLambda.addToRolePolicy(assumeRolePolicy);
+    this.s3AnalyzerLambda.addToRolePolicy(crossAccountAssumePolicy);
 
     // Encryption Analyzer Lambda
     this.encryptionAnalyzerLambda = new lambda.Function(this, 'EncryptionAnalyzerLambda', {
@@ -201,7 +190,7 @@ export class LambdaStack extends cdk.Stack {
       logRetention: logs.RetentionDays.ONE_MONTH,
       tracing: lambda.Tracing.ACTIVE,
     });
-    this.encryptionAnalyzerLambda.addToRolePolicy(assumeRolePolicy);
+    this.encryptionAnalyzerLambda.addToRolePolicy(crossAccountAssumePolicy);
 
     // CloudTrail Analyzer Lambda
     this.cloudtrailAnalyzerLambda = new lambda.Function(this, 'CloudTrailAnalyzerLambda', {
@@ -216,7 +205,7 @@ export class LambdaStack extends cdk.Stack {
       logRetention: logs.RetentionDays.ONE_MONTH,
       tracing: lambda.Tracing.ACTIVE,
     });
-    this.cloudtrailAnalyzerLambda.addToRolePolicy(assumeRolePolicy);
+    this.cloudtrailAnalyzerLambda.addToRolePolicy(crossAccountAssumePolicy);
 
     // Aggregate Findings Lambda
     this.aggregateFindingsLambda = new lambda.Function(this, 'AggregateFindingsLambda', {
@@ -274,7 +263,7 @@ export class LambdaStack extends cdk.Stack {
       assessmentsTable.grantReadWriteData(this.prowlerScannerLambda);
       findingsTable.grantWriteData(this.prowlerScannerLambda);
       encryptionKey.grantEncryptDecrypt(this.prowlerScannerLambda);
-      this.prowlerScannerLambda.addToRolePolicy(assumeRolePolicy);
+      this.prowlerScannerLambda.addToRolePolicy(crossAccountAssumePolicy);
     }
 
     // ==================== AI & Reports (Sprint 5) ====================
@@ -297,7 +286,7 @@ export class LambdaStack extends cdk.Stack {
       memorySize: 512,
       environment: {
         ASSESSMENTS_TABLE: assessmentsTable.tableName,
-        BEDROCK_MODEL_ID: 'anthropic.claude-3-haiku-20240307-v1:0',
+        BEDROCK_MODEL_ID: 'anthropic.claude-3-5-sonnet-20241022-v2:0',
         LOG_LEVEL: envName === 'prod' ? 'INFO' : 'DEBUG',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,
@@ -358,7 +347,7 @@ export class LambdaStack extends cdk.Stack {
     assessmentsTable.grantReadWriteData(this.nativeServicePullerLambda);
     findingsTable.grantWriteData(this.nativeServicePullerLambda);
     encryptionKey.grantEncryptDecrypt(this.nativeServicePullerLambda);
-    this.nativeServicePullerLambda.addToRolePolicy(assumeRolePolicy);
+    this.nativeServicePullerLambda.addToRolePolicy(crossAccountAssumePolicy);
 
     // Outputs
     new cdk.CfnOutput(this, 'ValidateRoleLambdaArn', {

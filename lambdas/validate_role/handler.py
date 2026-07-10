@@ -118,6 +118,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "roleArn": role_arn,
             "externalId": external_id,
             "regions": regions,
+            "scope": event.get("scope", ["all"]),
             "assumedRoleArn": caller_identity["Arn"],
             "permissionsVerified": permissions_check["permissions"],
         }

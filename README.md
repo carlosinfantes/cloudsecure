@@ -5,7 +5,7 @@
 
 <p align="center">
   <a href="https://github.com/carlosinfantes/cloudsecure/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/version-1.0.0-green.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.3.0-green.svg" alt="Version">
   <img src="https://img.shields.io/badge/python-3.12-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/CDK-TypeScript-orange.svg" alt="CDK">
   <img src="https://img.shields.io/badge/AI-Bedrock%20Claude-blueviolet.svg" alt="AI">
@@ -146,14 +146,33 @@ aws cloudformation deploy \
   --parameter-overrides ExternalId=your-external-id
 ```
 
+### Upgrade Components
+
+```bash
+# Upgrade everything (infrastructure + Prowler + CLI)
+./deploy.sh --upgrade
+
+# Upgrade only specific components
+./deploy.sh --upgrade infra     # Redeploy CDK stacks
+./deploy.sh --upgrade prowler   # Pull latest Prowler image + redeploy
+./deploy.sh --upgrade cli       # Upgrade CLI from PyPI
+```
+
 ### Run an Assessment
 
 ```bash
-# Start assessment (polls until complete by default)
+# Start assessment — scans everything by default
 cloudsecure --profile YOUR_PROFILE assess \
   --account-id 123456789012 \
   --role-arn arn:aws:iam::123456789012:role/CloudSecureAssessmentRole \
   --external-id your-external-id
+
+# Scan only specific services
+cloudsecure --profile YOUR_PROFILE assess \
+  --account-id 123456789012 \
+  --role-arn arn:aws:iam::123456789012:role/CloudSecureAssessmentRole \
+  --external-id your-external-id \
+  --scope iam --scope s3
 
 # List all assessments
 cloudsecure --profile YOUR_PROFILE status
