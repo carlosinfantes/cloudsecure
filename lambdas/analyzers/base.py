@@ -6,7 +6,7 @@ import os
 # Add shared module to path
 import sys
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, ClassVar
 from uuid import UUID
 
 import boto3
@@ -19,18 +19,27 @@ from shared.models import ComplianceMapping, Finding, FindingSeverity, Remediati
 
 logger = logging.getLogger()
 
-# Maps analyzer names to the scopes they belong to
-ANALYZER_SCOPES = {
-    "iam_analyzer": ["iam"],
-    "network_analyzer": ["network", "ec2", "vpc"],
-    "s3_analyzer": ["s3"],
-    "encryption_analyzer": ["encryption"],
-    "cloudtrail_analyzer": ["cloudtrail"],
-}
-
 
 class BaseAnalyzer(ABC):
     """Base class for security analyzers."""
+
+    #: Analyzer name, used for logging and as the `source` of its findings.
+    name: ClassVar[str]
+
+    #: Scope values (CLI `--scope`) this analyzer answers to.
+    scopes: ClassVar[tuple[str, ...]]
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Reject analyzers that forget to declare a name or a scope.
+
+        Without this, a missing or mistyped scope silently excludes the
+        analyzer from every scoped assessment.
+        """
+        super().__init_subclass__(**kwargs)
+        if not isinstance(getattr(cls, "name", None), str) or not cls.name:
+            raise TypeError(f"{cls.__name__} must define a non-empty 'name' string")
+        if not getattr(cls, "scopes", None):
+            raise TypeError(f"{cls.__name__} must define a non-empty 'scopes' tuple")
 
     def __init__(
         self,
@@ -44,12 +53,6 @@ class BaseAnalyzer(ABC):
         self.session = session
         self.regions = regions
         self.findings: list[Finding] = []
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Analyzer name for logging and identification."""
-        pass
 
     @abstractmethod
     def analyze(self) -> list[Finding]:
@@ -129,19 +132,17 @@ def run_analyzer(
     scope = event.get("scope", ["all"])
 
     # Skip analyzer if not in requested scope
-    analyzer_name = analyzer_class.__name__.lower()
-    if "all" not in scope:
-        analyzer_scopes = ANALYZER_SCOPES.get(analyzer_name, [])
-        if not any(s in scope for s in analyzer_scopes):
-            logger.info(f"Skipping {analyzer_name} — not in scope {scope}")
-            return {
-                "success": True,
-                "analyzer": analyzer_name,
-                "assessmentId": assessment_id,
-                "findingsCount": 0,
-                "findings": [],
-                "skipped": True,
-            }
+    analyzer_name = analyzer_class.name
+    if "all" not in scope and not any(s in scope for s in analyzer_class.scopes):
+        logger.info(f"Skipping {analyzer_name} — not in scope {scope}")
+        return {
+            "success": True,
+            "analyzer": analyzer_name,
+            "assessmentId": assessment_id,
+            "findingsCount": 0,
+            "findings": [],
+            "skipped": True,
+        }
 
     logger.info(f"Running {analyzer_class.__name__} for assessment {assessment_id}")
 
@@ -200,7 +201,7 @@ def run_analyzer(
         logger.error(error_msg)
         return {
             "success": False,
-            "analyzer": analyzer_class.__name__,
+            "analyzer": analyzer_name,
             "assessmentId": assessment_id,
             "error": error_msg,
         }
@@ -209,7 +210,7 @@ def run_analyzer(
         logger.exception(f"Analyzer error: {e}")
         return {
             "success": False,
-            "analyzer": analyzer_class.__name__,
+            "analyzer": analyzer_name,
             "assessmentId": assessment_id,
             "error": str(e),
         }

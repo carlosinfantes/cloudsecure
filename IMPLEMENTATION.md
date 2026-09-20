@@ -3,10 +3,31 @@
 **Project**: CloudSecure Assessment Platform
 **Author**: CloudSecure Contributors
 **Started**: 2025-01-23
-**Current Sprint**: Deployed & Operational
+**Current state**: working prototype / internal beta — not production ready
 **Last Deployment**: 2026-03-05 (Region: eu-west-1)
 
 ---
+
+## Where the project actually stands (2026-09-20)
+
+The sprint table below tracks what was *built*. It is not a statement about
+what *works*: a full audit in September 2026 found the happy path working
+end to end on small accounts, alongside defects that make results wrong or
+incomplete. Known gaps, in the order they matter:
+
+| Area | State |
+|------|-------|
+| `--scope` | Fixed 2026-09: it used to skip every native analyzer |
+| Prowler parsing | Fixed 2026-09: passing checks used to be reported as findings |
+| Prowler EKS checks | Fixed 2026-09: five check IDs did not exist |
+| Retention (TTL) | Fixed 2026-09: `expiresAt` was never written |
+| AI synthesis | **Broken**: the configured Bedrock model is end-of-life, and the fallback reports success |
+| Failure handling | **Broken**: a failure after discovery leaves the assessment RUNNING forever |
+| Scale | **Limited**: all findings travel in the Step Functions payload (256 KiB) |
+| Findings content | **Partial**: compliance mappings and remediation are dropped before storage |
+| Coverage gaps | **Partial**: missing security services are detected but not reported |
+| Onboarding role | **Too broad**: grants ReadOnlyAccess on top of SecurityAudit |
+| Shared layer | **Fragile**: exported across stacks, which blocks updating it |
 
 ## Progress Overview
 
@@ -66,9 +87,9 @@
 
 ### CI/CD Pipeline
 - [x] Create CI/CD workflow
-- [x] Add CDK synth validation
+- [x] Add CDK synth validation (added to CI 2026-09)
 - [x] Add Python linting (Ruff, Black)
-- [x] Create deploy workflow for dev/test/main
+- [ ] Create deploy workflow for dev/test/main (does not exist)
 
 ---
 
@@ -95,8 +116,8 @@
 - [x] Implement get_report Lambda (GET /assessments/{id}/report)
 
 ### Testing
-- [x] Set up pytest with moto
-- [x] Write unit tests for shared modules (38 tests, 93% coverage)
+- [x] Set up pytest (moto used where the AWS response shape matters, since 2026-09)
+- [x] Write unit tests for shared modules (302 tests overall: 276 Lambda + 26 CLI; 54% coverage across all packages)
 - [ ] Write unit tests for Lambda handlers
 - [ ] Configure LocalStack for integration tests
 
@@ -294,7 +315,7 @@
 - Implemented discovery_module Lambda handler
 - Created Lambda Stack (CDK) with shared layer
 - Created Orchestration Stack with Step Functions state machine
-- Added unit tests for shared modules (38 tests, 93% coverage)
+- Added unit tests for shared modules (38 tests at the time; 302 as of 2026-09)
 - Updated CDK app with Lambda and Orchestration stacks
 
 ### 2025-01-23 (Sprint 1)
@@ -337,7 +358,7 @@ Reports generated in HTML, JSON, and CSV formats via pre-signed S3 URLs.
 - **Prowler**: Lambda Container Image (Prowler 5.17.0) - Pre-built to ECR, deployed as DockerImageFunction
 - **Compliance**: CIS AWS 1.4 first, others later
 - **Multi-Account**: Phase 2 (single-account first)
-- **Testing**: moto (unit) + LocalStack (integration)
+- **Testing**: pytest with moto for AWS-shaped responses (LocalStack integration: not done)
 - **Lambda Layer**: Uses Docker to build packages with correct Linux (manylinux2014_x86_64) binaries
 
 ### Blockers

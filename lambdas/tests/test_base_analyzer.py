@@ -1,21 +1,35 @@
 """Tests for BaseAnalyzer and run_analyzer in analyzers/base.py."""
 
 import logging
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import pytest
 from botocore.exceptions import ClientError
 
 from analyzers.base import BaseAnalyzer, run_analyzer
+from analyzers.cloudtrail_analyzer import CloudTrailAnalyzer
+from analyzers.encryption_analyzer import EncryptionAnalyzer
+from analyzers.iam_analyzer import IAMAnalyzer
+from analyzers.network_analyzer import NetworkAnalyzer
+from analyzers.s3_analyzer import S3Analyzer
 from shared.models import Finding, FindingSeverity
+
+ALL_ANALYZERS = [
+    IAMAnalyzer,
+    NetworkAnalyzer,
+    S3Analyzer,
+    EncryptionAnalyzer,
+    CloudTrailAnalyzer,
+]
 
 
 class _DummyAnalyzer(BaseAnalyzer):
     """Concrete subclass for testing BaseAnalyzer."""
 
-    @property
-    def name(self) -> str:
-        return "dummy-analyzer"
+    name: ClassVar[str] = "dummy-analyzer"
+    scopes: ClassVar[tuple[str, ...]] = ("dummy",)
 
     def analyze(self) -> list[Finding]:
         self.create_finding(
@@ -201,3 +215,88 @@ class TestRunAnalyzer:
         assert fd["severity"] == "HIGH"
         assert fd["title"] == "Test finding"
         assert fd["resourceType"] == "AWS::Test::Resource"
+
+
+class TestAnalyzerDeclarations:
+    """Every analyzer must declare its name and scopes explicitly.
+
+    Regression guard for the bug where run_analyzer derived the scope key
+    from the class name (``IAMAnalyzer`` -> ``iamanalyzer``), which never
+    matched the scope map, so ``--scope`` silently skipped every analyzer.
+    """
+
+    @pytest.mark.parametrize("analyzer_class", ALL_ANALYZERS)
+    def test_declares_name_and_scopes(self, analyzer_class):
+        assert isinstance(analyzer_class.name, str) and analyzer_class.name
+        assert analyzer_class.scopes
+
+    def test_names_are_unique(self):
+        names = [a.name for a in ALL_ANALYZERS]
+        assert len(names) == len(set(names))
+
+    def test_subclass_without_scopes_is_rejected(self):
+        with pytest.raises(TypeError, match="scopes"):
+
+            class NoScopes(BaseAnalyzer):
+                name: ClassVar[str] = "no-scopes"
+
+                def analyze(self) -> list[Finding]:
+                    return []
+
+    def test_subclass_without_name_is_rejected(self):
+        with pytest.raises(TypeError, match="name"):
+
+            class NoName(BaseAnalyzer):
+                scopes: ClassVar[tuple[str, ...]] = ("x",)
+
+                def analyze(self) -> list[Finding]:
+                    return []
+
+
+class TestScopeFiltering:
+    SCOPE_CASES = [
+        (IAMAnalyzer, "iam"),
+        (NetworkAnalyzer, "network"),
+        (NetworkAnalyzer, "ec2"),
+        (NetworkAnalyzer, "vpc"),
+        (S3Analyzer, "s3"),
+        (EncryptionAnalyzer, "encryption"),
+        (CloudTrailAnalyzer, "cloudtrail"),
+    ]
+
+    @staticmethod
+    def _event(scope):
+        return {
+            "assessmentId": str(uuid4()),
+            "accountId": "123456789012",
+            "roleArn": "arn:aws:iam::123456789012:role/Test",
+            "externalId": "ext-123",
+            "regions": ["us-east-1"],
+            "scope": scope,
+        }
+
+    @pytest.mark.parametrize("analyzer_class,scope", SCOPE_CASES)
+    @patch("analyzers.base.get_assumed_role_session")
+    def test_runs_when_scope_matches(self, mock_get_session, analyzer_class, scope):
+        with patch.object(analyzer_class, "analyze", return_value=[]):
+            result = run_analyzer(analyzer_class, self._event([scope]))
+
+        assert result["success"] is True
+        assert result.get("skipped") is not True
+        assert result["analyzer"] == analyzer_class.name
+
+    @pytest.mark.parametrize("analyzer_class", ALL_ANALYZERS)
+    def test_skipped_when_scope_does_not_match(self, analyzer_class):
+        result = run_analyzer(analyzer_class, self._event(["something-else"]))
+
+        assert result["skipped"] is True
+        assert result["findingsCount"] == 0
+        assert result["analyzer"] == analyzer_class.name
+
+    @pytest.mark.parametrize("analyzer_class", ALL_ANALYZERS)
+    @patch("analyzers.base.get_assumed_role_session")
+    def test_scope_all_runs_every_analyzer(self, mock_get_session, analyzer_class):
+        with patch.object(analyzer_class, "analyze", return_value=[]):
+            result = run_analyzer(analyzer_class, self._event(["all"]))
+
+        assert result.get("skipped") is not True

@@ -11,7 +11,7 @@ Checks for:
 import logging
 import os
 import sys
-from typing import Any
+from typing import Any, ClassVar
 
 from botocore.exceptions import ClientError
 
@@ -33,9 +33,8 @@ logger.setLevel(logging.INFO)
 class EncryptionAnalyzer(BaseAnalyzer):
     """Analyzer for encryption-related security issues."""
 
-    @property
-    def name(self) -> str:
-        return "encryption-analyzer"
+    name: ClassVar[str] = "encryption-analyzer"
+    scopes: ClassVar[tuple[str, ...]] = ("encryption",)
 
     def analyze(self) -> list[Finding]:
         """Run encryption analysis across all regions."""

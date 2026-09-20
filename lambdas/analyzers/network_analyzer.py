@@ -12,7 +12,7 @@ Checks for:
 import logging
 import os
 import sys
-from typing import Any
+from typing import Any, ClassVar
 
 from botocore.exceptions import ClientError
 
@@ -49,9 +49,8 @@ SENSITIVE_PORTS = {
 class NetworkAnalyzer(BaseAnalyzer):
     """Analyzer for network security issues."""
 
-    @property
-    def name(self) -> str:
-        return "network-analyzer"
+    name: ClassVar[str] = "network-analyzer"
+    scopes: ClassVar[tuple[str, ...]] = ("network", "ec2", "vpc")
 
     def analyze(self) -> list[Finding]:
         """Run network security analysis across all regions."""
@@ -229,12 +228,15 @@ class NetworkAnalyzer(BaseAnalyzer):
             # Get all VPCs
             vpcs = ec2.describe_vpcs()["Vpcs"]
 
-            # Get all flow logs
+            # Get all flow logs.
+            # A FlowLog has no ResourceType field: the resource it covers is
+            # identified by the prefix of ResourceId (vpc-, subnet- or eni-).
             flow_logs = ec2.describe_flow_logs()["FlowLogs"]
             vpc_with_flow_logs = {
                 fl["ResourceId"]
                 for fl in flow_logs
-                if fl["ResourceType"] == "VPC" and fl["FlowLogStatus"] == "ACTIVE"
+                if fl.get("ResourceId", "").startswith("vpc-")
+                and fl.get("FlowLogStatus") == "ACTIVE"
             }
 
             for vpc in vpcs:

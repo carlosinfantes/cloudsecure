@@ -1,6 +1,8 @@
 """AWS client utilities for cross-account access and boto3 session management."""
 
+import math
 import os
+from decimal import Decimal
 from functools import lru_cache
 from typing import Any
 
@@ -181,3 +183,23 @@ def get_all_regions(session: boto3.Session | None = None) -> list[str]:
 
     response = ec2.describe_regions(AllRegions=False)
     return [region["RegionName"] for region in response["Regions"]]
+
+
+def to_dynamodb_safe(value: Any) -> Any:
+    """Convert a value into something the DynamoDB resource API accepts.
+
+    The resource API rejects floats ("Float types are not supported"), and a
+    single rejected item aborts the whole batch_writer flush, so findings that
+    carry float scores (GuardDuty severity, confidence) would be partially
+    written. Non-finite floats have no DynamoDB number representation and are
+    stored as strings.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float):
+        return Decimal(str(value)) if math.isfinite(value) else str(value)
+    if isinstance(value, dict):
+        return {k: to_dynamodb_safe(v) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        return [to_dynamodb_safe(v) for v in value]
+    return value

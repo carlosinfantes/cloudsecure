@@ -9,12 +9,56 @@ permissions:
   contents: read
 
 jobs:
+  validate-checks:
+    name: Validate Prowler check IDs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install the pinned Prowler
+        run: |
+          VERSION=$(python -c "import re,pathlib; \
+            print(re.search(r'PROWLER_VERSION\s*=\s*\"([^\"]+)\"', \
+            pathlib.Path('lambdas/prowler_scanner/handler.py').read_text()).group(1))")
+          echo "Installing prowler==$VERSION"
+          pip install "prowler==$VERSION"
+
+      - name: Every check ID must exist
+        # Prowler exits 1 on an unknown check ID, so a typo here means every
+        # scan fails in production. Five invented EKS IDs shipped this way.
+        run: |
+          prowler aws --list-checks > /tmp/checks.txt 2>/tmp/checks.err || true
+          if [ ! -s /tmp/checks.txt ]; then
+            echo "::warning::Could not list Prowler checks, skipping validation"
+            cat /tmp/checks.err || true
+            exit 0
+          fi
+          python - <<'EOF'
+          import pathlib, re, sys
+
+          source = pathlib.Path("lambdas/prowler_scanner/handler.py").read_text()
+          block = re.search(r"ALL_CHECKS = \[(.*?)\n\]", source, re.S).group(1)
+          checks = re.findall(r'"([a-z0-9_]+)"', block)
+          listed = pathlib.Path("/tmp/checks.txt").read_text()
+
+          unknown = [c for c in checks if c not in listed]
+          if unknown:
+              print(f"::error::Unknown Prowler check IDs: {', '.join(unknown)}")
+              sys.exit(1)
+          print(f"All {len(checks)} check IDs exist")
+          EOF
+
   build-and-push:
     name: Build and push custom Prowler image
+    needs: validate-checks
     runs-on: ubuntu-latest
     environment: Docker Hub
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Extract version from tag
         id: version

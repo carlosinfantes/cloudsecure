@@ -13,7 +13,7 @@ import logging
 import os
 import sys
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, ClassVar
 
 from botocore.exceptions import ClientError
 
@@ -39,9 +39,8 @@ ACCESS_KEY_AGE_THRESHOLD_DAYS = 90
 class IAMAnalyzer(BaseAnalyzer):
     """Analyzer for IAM security issues."""
 
-    @property
-    def name(self) -> str:
-        return "iam-analyzer"
+    name: ClassVar[str] = "iam-analyzer"
+    scopes: ClassVar[tuple[str, ...]] = ("iam",)
 
     def analyze(self) -> list[Finding]:
         """Run IAM security analysis."""

@@ -29,11 +29,14 @@ repos:
   # Custom blockers for project-specific sensitive data
   - repo: local
     hooks:
+      # Blocks any 12-digit number except the documented placeholders, which
+      # is what tests and docs must use. Digits next to a hyphen are skipped:
+      # the last group of a UUID is 12 digits and is not an account ID.
       - id: block-aws-account-ids
         name: Block real AWS account IDs
         language: pygrep
         types: [text]
-        entry: '(?<!\d)\b(?!123456789012\b)\d{12}\b(?!\d)'
+        entry: '(?<![-\d])(?!123456789012|111122223333|444455556666|999888777666)\d{12}(?![-\d])'
         exclude: >
           (?x)^(
             package-lock\.json|

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20+ (24 is what CI uses)
 - Python 3.12+
 - Docker or Podman
 - AWS CLI configured
@@ -13,71 +13,22 @@
 
 ### 1. Install pre-commit hooks (mandatory)
 
-#### Gitleaks ####
 ```bash
-# Option 1: Download the binary directly
-wget https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_8.21.2_linux_amd64.tar.gz
-tar -xzf gitleaks_8.21.2_linux_amd64.tar.gz
-sudo mv gitleaks /usr/local/bin/
-
-# Option 2: If you have Go installed
-go install github.com/gitleaks/gitleaks/v8@latest
-
-# Option 3: Use package manager
-brew install gitleaks
-sudo apt install gitleaks
-```
-
-Verify installation:
-```bash
-gitleaks version
-```
-
-#### pre-commit ####
-
-```bash
-brew install pre-commit # MacOS
-## On Linux use one of the methods below
-# sudo apt install pre-commit # Debian/Ubuntu
-# pip install pre-commit # PIP
+brew install pre-commit gitleaks
 pre-commit install
 pre-commit install --hook-type pre-push
 ```
 
-Verify installation:
-```bash
-pre-commit --version
-```
-
-### 2. Build the Lambda layer
+### 2. Install dependencies and build
 
 ```bash
-cd lambdas
-# Use docker or podman
-docker run --rm --entrypoint /bin/bash \
-  -v "$(pwd)/layer:/layer" \
-  public.ecr.aws/lambda/python:3.12 \
-  -c "pip install pydantic jinja2 boto3 --target /layer/python/ --no-cache-dir"
-cp -r shared analyzers layer/python/
+make install   # Install CDK + Python dependencies
+make layer     # Build Lambda shared layer (Docker or Podman; pip fallback)
 ```
 
-> **Tip:** `podman` can be used as a drop-in replacement for `docker` in the command above.
-
-### 3. Install dependencies
-
-```bash
-# CDK
-cd infrastructure && npm install
-
-# Python (option A: system packages)
-sudo apt install python3-pytest python3-pydantic python3-boto3 python3-dateutil
-
-# Python (option B: venv + pip)
-cd ../lambdas
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-```
+> Without a container runtime the layer is built with the host's wheels, which
+> only works if the host is Linux x86_64 on Python 3.12. On macOS or ARM, use
+> Docker or Podman or every Lambda will fail to import its dependencies.
 
 ## Secret Scanning Policy
 
@@ -93,13 +44,70 @@ Pre-commit hooks enforce the following on every commit:
 
 If a hook blocks your commit, fix the issue before committing. Never use `--no-verify` to bypass hooks.
 
+## Testing & Validation
+
+### Running tests
+
+```bash
+make test    # Run CDK (jest) + Python (pytest) tests
+make lint    # Check Python code style (ruff + black)
+```
+
+Or individually:
+
+```bash
+cd lambdas && python -m pytest tests/ -v              # Python unit tests
+cd infrastructure && npm test                          # CDK snapshot tests
+cd lambdas && ruff check . && black --check .          # Linting
+```
+
+### What gets tested
+
+| Area | Tool | Coverage |
+|------|------|----------|
+| Shared models (Assessment, Finding, CRF) | pytest | `lambdas/tests/test_models.py`, `test_crf_models.py` |
+| AWS client (STS AssumeRole, regions) | pytest | `lambdas/tests/test_aws_client.py` |
+| Analyzers, API handlers, Prowler parsing | pytest, moto where the AWS response shape matters | `lambdas/tests/` |
+| CLI (endpoint resolution, commands) | pytest | `cli/tests/` |
+| CDK stack synthesis | jest + `cdk synth` in CI | `infrastructure/test/` |
+| Python code style | ruff + black | All files in `lambdas/` |
+| Secrets in code | gitleaks + custom hooks | Every commit (pre-commit) |
+| Secrets in CI | gitleaks GitHub Action | Every push and PR |
+
+### What runs automatically
+
+**On every commit** (pre-commit hooks):
+- Trailing whitespace, end-of-file, YAML/JSON/TOML validation
+- Secret scanning (gitleaks)
+- Block real AWS account IDs, internal emails, private keys
+- Block commits directly to `main`
+- Python formatting (ruff + black on `lambdas/`)
+
+**On every push/PR** (GitHub Actions):
+- gitleaks secret scan (`.github/workflows/secrets-scan.yml`)
+- Lambda tests and lint, with coverage measured over every package and a 50%
+  floor (`.github/workflows/ci.yml`)
+- CLI tests on Python 3.10 and 3.13, with AWS access disabled
+- CDK build, jest and `cdk synth`
+
+Mock the AWS calls in unit tests. Prefer moto when the shape of the AWS
+response is what the code depends on: mocks that return a shape AWS never
+returns are how several bugs reached production with CI green.
+
 ## Pull Request Checklist
 
 - [ ] Pre-commit hooks pass (`pre-commit run --all-files`)
+- [ ] Tests pass (`make test`)
+- [ ] Linting passes (`make lint`)
 - [ ] No real AWS account IDs or credentials in any file
 - [ ] Lambda layer vendored files are NOT committed (`lambdas/layer/python/`)
-- [ ] Tests pass (`cd lambdas && pytest`)
-- [ ] CDK synthesizes successfully (`cd infrastructure && npm run build && npx cdk synth`)
+- [ ] CDK synthesizes successfully (`make synth`)
+- [ ] No AI attribution or co-author trailers in commits, PR descriptions or
+      code comments
+
+## Commits
+
+Use conventional commit messages: `Fix ...`, `Add ...`, `Update ...`, `Refactor ...`.
 
 ## Branch Strategy
 

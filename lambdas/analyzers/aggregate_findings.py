@@ -20,6 +20,8 @@ from botocore.exceptions import ClientError
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from shared.aws_client import to_dynamodb_safe
+from shared.models import expires_at_epoch
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -202,8 +204,9 @@ def store_findings(table: Any, assessment_id: str, findings: list[dict]) -> int:
 
             # Remove None values
             item = {k: v for k, v in item.items() if v is not None}
+            item["expiresAt"] = expires_at_epoch()
 
-            batch.put_item(Item=item)
+            batch.put_item(Item=to_dynamodb_safe(item))
             stored += 1
 
     return stored

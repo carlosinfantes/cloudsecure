@@ -32,6 +32,68 @@ ASSESSMENTS_TABLE = os.environ.get("ASSESSMENTS_TABLE", "cloudsecure-assessments
 PROWLER_COMPLIANCE_FRAMEWORK = "cis_2.0_aws"
 PROWLER_TIMEOUT_SECONDS = 840  # 14 minutes (Lambda max is 15)
 
+# Prowler version installed in the container image. Must match the pin in
+# Dockerfile: check IDs and output format change between versions.
+PROWLER_VERSION = "5.42.0"
+
+# Checks to run, a subset of CIS chosen to keep the scan within the Lambda
+# timeout. Every ID must exist in the pinned Prowler version: since 5.14
+# Prowler exits with status 1 when given an unknown check ID, which fails the
+# whole scan. Regenerate with `prowler aws --list-checks`.
+ALL_CHECKS = [
+    # IAM
+    "iam_root_mfa_enabled",
+    "iam_root_hardware_mfa_enabled",
+    "iam_no_root_access_key",
+    "iam_user_mfa_enabled_console_access",
+    "iam_password_policy_minimum_length_14",
+    # CloudTrail
+    "cloudtrail_multi_region_enabled",
+    "cloudtrail_log_file_validation_enabled",
+    "cloudtrail_cloudwatch_logging_enabled",
+    # S3
+    "s3_bucket_public_access",
+    "s3_bucket_default_encryption",
+    "s3_account_level_public_access_blocks",
+    # EC2
+    "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_22",
+    "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_3389",
+    "ec2_ebs_default_encryption",
+    # RDS
+    "rds_instance_storage_encrypted",
+    "rds_instance_no_public_access",
+    # VPC
+    "vpc_flow_logs_enabled",
+    # EKS
+    "eks_control_plane_logging_all_types_enabled",
+    "eks_cluster_not_publicly_accessible",
+    "eks_cluster_kms_cmk_encryption_in_secrets_enabled",
+    "eks_cluster_uses_a_supported_version",
+    "eks_cluster_network_policy_enabled",
+]
+
+# Maps scan scope values to Prowler check IDs
+SCOPE_CHECKS = {
+    "iam": [c for c in ALL_CHECKS if c.startswith("iam_")],
+    "cloudtrail": [c for c in ALL_CHECKS if c.startswith("cloudtrail_")],
+    "s3": [c for c in ALL_CHECKS if c.startswith("s3_")],
+    "ec2": [c for c in ALL_CHECKS if c.startswith("ec2_")],
+    "eks": [c for c in ALL_CHECKS if c.startswith("eks_")],
+    "network": [
+        "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_22",
+        "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_3389",
+        "vpc_flow_logs_enabled",
+    ],
+    "rds": [c for c in ALL_CHECKS if c.startswith("rds_")],
+    "vpc": ["vpc_flow_logs_enabled"],
+    "encryption": [
+        "ec2_ebs_default_encryption",
+        "rds_instance_storage_encrypted",
+        "s3_bucket_default_encryption",
+        "eks_cluster_kms_cmk_encryption_in_secrets_enabled",
+    ],
+}
+
 # Severity mapping from Prowler to CloudSecure
 SEVERITY_MAP = {
     "critical": "CRITICAL",
@@ -63,6 +125,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     role_arn = event.get("roleArn")
     external_id = event.get("externalId")
     regions = event.get("regions", [])
+    scope = event.get("scope", ["all"])
 
     if not all([assessment_id, account_id, role_arn, external_id]):
         return {
@@ -71,6 +134,28 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "error": "Missing required parameters",
             "assessmentId": assessment_id,
         }
+
+    # Resolve checks based on scope
+    if "all" in scope:
+        checks = ALL_CHECKS
+    else:
+        checks = []
+        for s in scope:
+            checks.extend(SCOPE_CHECKS.get(s, []))
+        checks = list(dict.fromkeys(checks))  # deduplicate preserving order
+
+    if not checks:
+        logger.info(f"No Prowler checks match scope {scope} — skipping")
+        return {
+            "success": True,
+            "analyzer": "prowler",
+            "assessmentId": assessment_id,
+            "findingsCount": 0,
+            "findings": [],
+            "skipped": True,
+        }
+
+    logger.info(f"Prowler scope={scope}, running {len(checks)} checks")
 
     try:
         # Update assessment progress
@@ -86,6 +171,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 account_id=account_id,
                 output_dir=output_dir,
                 regions=regions[:5] if regions else None,  # Limit regions for speed
+                checks=checks,
             )
 
             if not prowler_output["success"]:
@@ -167,6 +253,7 @@ def run_prowler(
     account_id: str,
     output_dir: str,
     regions: list[str] | None = None,
+    checks: list[str] | None = None,
 ) -> dict[str, Any]:
     """Execute Prowler CLI.
 
@@ -175,6 +262,7 @@ def run_prowler(
         account_id: Target AWS account ID
         output_dir: Directory for output files
         regions: Optional list of regions to scan
+        checks: Prowler check IDs to run (defaults to ALL_CHECKS)
 
     Returns:
         dict with success status and version
@@ -208,44 +296,9 @@ def run_prowler(
         cmd.append("--filter-region")
         cmd.extend(regions)
 
-    # Add specific checks for faster execution (subset of CIS)
-    # This reduces scan time while covering critical areas
-    critical_checks = [
-        # IAM
-        "iam_root_mfa_enabled",
-        "iam_root_hardware_mfa_enabled",
-        "iam_no_root_access_key",
-        "iam_user_mfa_enabled_console_access",
-        "iam_password_policy_minimum_length_14",
-        # CloudTrail
-        "cloudtrail_multi_region_enabled",
-        "cloudtrail_log_file_validation_enabled",
-        "cloudtrail_cloudwatch_logging_enabled",
-        # S3
-        "s3_bucket_public_access",
-        "s3_bucket_default_encryption",
-        "s3_account_level_public_access_blocks",
-        # EC2
-        "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_22",
-        "ec2_securitygroup_allow_ingress_from_internet_to_tcp_port_3389",
-        "ec2_ebs_default_encryption",
-        # RDS
-        "rds_instance_storage_encrypted",
-        "rds_instance_no_public_access",
-        # VPC
-        "vpc_flow_logs_enabled",
-        # EKS
-        "eks_cluster_logging_enabled",
-        "eks_cluster_endpoint_public_access_disabled",
-        "eks_cluster_secrets_encryption_enabled",
-        "eks_cluster_uses_latest_kubernetes_version",
-        "eks_cluster_network_policy_enabled",
-        "eks_cluster_control_plane_audit_logging_enabled",
-    ]
-
     # Prowler 5.x expects checks as separate arguments (not comma-separated)
     cmd.append("--checks")
-    cmd.extend(critical_checks)
+    cmd.extend(checks or ALL_CHECKS)
 
     logger.info(f"Prowler command: {' '.join(cmd[:10])}...")  # Log partial command
 
@@ -412,19 +465,27 @@ def normalize_ocsf_finding(
     assessment_id: str,
     account_id: str,
 ) -> dict[str, Any] | None:
-    """Normalize OCSF format Prowler finding."""
-    # OCSF status_id: 1=New, 2=In Progress, 99=Other
-    # We extract status from finding_info or status field
-    finding_info = prowler_finding.get("finding_info", {})
-    status = prowler_finding.get("status", "").upper()
+    """Normalize OCSF format Prowler finding.
 
-    # Skip PASS findings - OCSF uses different status representation
-    # Check both the status and status_id fields
-    if status in ["PASS", "PASSED"] or prowler_finding.get("status_id") == 1:
-        # status_id=1 typically means "pass" in Prowler OCSF
-        pass_statuses = ["pass", "passed", "info", "manual"]
-        if status.lower() in pass_statuses:
-            return None
+    Field names follow Prowler's OCSF DetectionFinding output:
+      - status_code  -> PASS / FAIL / MANUAL (the check outcome)
+      - status       -> New / Suppressed (the finding lifecycle, NOT the outcome)
+      - metadata.event_code -> check ID (finding_info.uid is a per-finding hash)
+      - unmapped.compliance -> compliance mappings
+      - resources[0].uid    -> resource ARN or ID
+    """
+    finding_info = prowler_finding.get("finding_info", {})
+
+    # Only failed checks are findings. Reading `status` here instead of
+    # `status_code` used to let every passing check through as a finding,
+    # including CRITICAL ones such as "MFA is enabled for the root account".
+    status_code = str(prowler_finding.get("status_code", "")).upper()
+    if status_code != "FAIL":
+        return None
+
+    # Suppressed (muted) findings are reported but must not be counted
+    if str(prowler_finding.get("status", "")).upper() == "SUPPRESSED":
+        return None
 
     # Map OCSF severity: 0=Unknown, 1=Informational, 2=Low, 3=Medium, 4=High, 5=Critical
     severity_id = prowler_finding.get("severity_id", 3)
@@ -436,13 +497,14 @@ def normalize_ocsf_finding(
     resource_info = resources[0] if resources else {}
 
     resource_id = resource_info.get("uid", "unknown")
-    resource_arn = resource_info.get("cloud", {}).get("account", {}).get("uid", "")
+    # resources[].uid is the ARN when the resource has one
+    resource_arn = resource_id if str(resource_id).startswith("arn:") else ""
     resource_type = resource_info.get("type", "unknown")
-    region = resource_info.get("region", "global")
+    region = resource_info.get("region") or prowler_finding.get("cloud", {}).get("region", "global")
 
-    # OCSF compliance information
+    # OCSF compliance information lives under `unmapped`
     compliance_mappings = []
-    compliance_info = prowler_finding.get("compliance", {})
+    compliance_info = prowler_finding.get("unmapped", {}).get("compliance", {})
     if isinstance(compliance_info, dict):
         for framework, controls in compliance_info.items():
             if isinstance(controls, list):
@@ -450,7 +512,7 @@ def normalize_ocsf_finding(
                     compliance_mappings.append({"framework": framework, "control": control})
 
     # Extract check info
-    check_id = finding_info.get("uid", prowler_finding.get("metadata", {}).get("event_code", ""))
+    check_id = prowler_finding.get("metadata", {}).get("event_code") or finding_info.get("uid", "")
     title = finding_info.get("title", prowler_finding.get("message", "Unknown Check"))
     description = prowler_finding.get("message", finding_info.get("desc", ""))
 
@@ -481,12 +543,10 @@ def normalize_ocsf_finding(
         },
         "metadata": {
             "checkId": check_id,
-            "serviceName": prowler_finding.get("metadata", {})
-            .get("product", {})
-            .get("feature", {})
-            .get("name", ""),
+            # The service is carried by the resource group, not by the product
+            "serviceName": resource_info.get("group", {}).get("name", ""),
             "subServiceName": "",
-            "prowlerStatus": status,
+            "prowlerStatus": status_code,
         },
     }
 

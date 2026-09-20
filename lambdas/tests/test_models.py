@@ -1,9 +1,10 @@
 """Tests for CloudSecure data models."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from shared.models import (
+    RETENTION_DAYS,
     Assessment,
     AssessmentStatus,
     ComplianceFramework,
@@ -11,6 +12,7 @@ from shared.models import (
     Finding,
     FindingSeverity,
     Remediation,
+    expires_at_epoch,
 )
 
 
@@ -196,3 +198,26 @@ class TestFinding:
         assert finding.remediation is not None
         assert finding.remediation.automatable is True
         assert len(finding.remediation.steps) == 3
+
+
+class TestRetention:
+    """DynamoDB only expires items that carry the TTL attribute."""
+
+    def test_expires_at_is_about_retention_days_ahead(self):
+        expected = datetime.now(UTC) + timedelta(days=RETENTION_DAYS)
+        assert abs(expires_at_epoch() - expected.timestamp()) < 60
+
+    def test_expires_at_honours_a_custom_window(self):
+        expected = datetime.now(UTC) + timedelta(days=7)
+        assert abs(expires_at_epoch(days=7) - expected.timestamp()) < 60
+
+    def test_assessment_item_carries_the_ttl_attribute(self, account_id, role_arn, external_id):
+        assessment = Assessment(
+            account_id=account_id,
+            role_arn=role_arn,
+            external_id=external_id,
+        )
+
+        item = assessment.to_dynamodb_item()
+
+        assert item["expiresAt"] > datetime.now(UTC).timestamp()

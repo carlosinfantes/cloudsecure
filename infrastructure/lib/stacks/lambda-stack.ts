@@ -8,6 +8,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import { Construct } from 'constructs';
 import * as path from 'path';
+import { pythonLambdaCode } from '../lambda-asset';
 
 export interface LambdaStackProps extends cdk.StackProps {
   envName: string;
@@ -70,7 +71,7 @@ export class LambdaStack extends cdk.Stack {
     // Note: For local development without Docker, the layer is created from the shared directory
     // In CI/CD, the pipeline will build the layer with dependencies
     this.sharedLayer = new lambda.LayerVersion(this, 'SharedLayer', {
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'layer')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'layer')),
       compatibleRuntimes: [pythonRuntime],
       description: 'CloudSecure shared Python modules',
     });
@@ -80,7 +81,7 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-validate-role-${envName}`,
       runtime: pythonRuntime,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'validate_role')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'validate_role')),
       layers: [this.sharedLayer],
       timeout: cdk.Duration.minutes(2),
       memorySize: 256,
@@ -102,7 +103,7 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-discovery-module-${envName}`,
       runtime: pythonRuntime,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'discovery_module')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'discovery_module')),
       layers: [this.sharedLayer],
       timeout: cdk.Duration.minutes(10),
       memorySize: 512,
@@ -137,7 +138,7 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-iam-analyzer-${envName}`,
       runtime: pythonRuntime,
       handler: 'iam_analyzer.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'analyzers')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'analyzers')),
       layers: [this.sharedLayer],
       timeout: analyzerTimeout,
       memorySize: analyzerMemory,
@@ -152,7 +153,7 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-network-analyzer-${envName}`,
       runtime: pythonRuntime,
       handler: 'network_analyzer.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'analyzers')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'analyzers')),
       layers: [this.sharedLayer],
       timeout: analyzerTimeout,
       memorySize: analyzerMemory,
@@ -167,7 +168,7 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-s3-analyzer-${envName}`,
       runtime: pythonRuntime,
       handler: 's3_analyzer.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'analyzers')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'analyzers')),
       layers: [this.sharedLayer],
       timeout: analyzerTimeout,
       memorySize: analyzerMemory,
@@ -182,7 +183,7 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-encryption-analyzer-${envName}`,
       runtime: pythonRuntime,
       handler: 'encryption_analyzer.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'analyzers')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'analyzers')),
       layers: [this.sharedLayer],
       timeout: analyzerTimeout,
       memorySize: analyzerMemory,
@@ -197,7 +198,7 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-cloudtrail-analyzer-${envName}`,
       runtime: pythonRuntime,
       handler: 'cloudtrail_analyzer.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'analyzers')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'analyzers')),
       layers: [this.sharedLayer],
       timeout: analyzerTimeout,
       memorySize: analyzerMemory,
@@ -212,7 +213,7 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-aggregate-findings-${envName}`,
       runtime: pythonRuntime,
       handler: 'aggregate_findings.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'analyzers')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'analyzers')),
       layers: [this.sharedLayer],
       timeout: cdk.Duration.minutes(5),
       memorySize: 512,
@@ -280,7 +281,7 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-ai-synthesis-${envName}`,
       runtime: pythonRuntime,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'ai_synthesis')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'ai_synthesis')),
       layers: [this.sharedLayer],
       timeout: cdk.Duration.minutes(5),
       memorySize: 512,
@@ -303,7 +304,7 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-report-generator-${envName}`,
       runtime: pythonRuntime,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'report_generator')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'report_generator')),
       layers: [this.sharedLayer],
       timeout: cdk.Duration.minutes(5),
       memorySize: 1024,
@@ -331,12 +332,13 @@ export class LambdaStack extends cdk.Stack {
       functionName: `cloudsecure-native-service-puller-${envName}`,
       runtime: pythonRuntime,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'native_service_puller')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'native_service_puller')),
       layers: [this.sharedLayer],
       timeout: cdk.Duration.minutes(10),
       memorySize: 512,
       environment: {
         ASSESSMENTS_TABLE: assessmentsTable.tableName,
+        FINDINGS_TABLE: findingsTable.tableName,
         LOG_LEVEL: envName === 'prod' ? 'INFO' : 'DEBUG',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,

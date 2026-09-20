@@ -15,9 +15,9 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2
     && ./aws/install \
     && rm -rf awscliv2.zip aws
 
-# Install Prowler with AWS provider only (much smaller image)
-# This avoids installing Azure, GCP, Kubernetes SDKs that we don't need
-RUN pip install --no-cache-dir "prowler[aws]"
+# Install Prowler, pinned: an unpinned build silently changes check IDs and
+# output format between images. Keep PROWLER_VERSION in handler.py in sync.
+RUN pip install --no-cache-dir "prowler==5.42.0"
 
 # Copy function code and set proper permissions for Lambda runtime
 COPY handler.py ${LAMBDA_TASK_ROOT}/
