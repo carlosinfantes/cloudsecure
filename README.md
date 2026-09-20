@@ -30,12 +30,16 @@ CloudSecure runs **100% serverless inside AWS**. No CLI, no laptops, no credenti
 
 - **Delegated access via IAM roles** — customers grant a read-only role via `STS AssumeRole` with `ExternalId`. No credentials exchanged, only trust delegated.
 - **Fully serverless** — Lambda, Step Functions, DynamoDB, S3. Nothing to install, patch, or maintain.
-- **AI-powered synthesis** — 7 analyzers run in parallel, Bedrock Claude synthesizes raw findings into prioritized, actionable intelligence.
+- **AI synthesis** — 7 analyzers run in parallel and Bedrock Claude summarizes
+  the findings. The configured model has reached end of life on Bedrock, so
+  this currently falls back to a deterministic summary (see IMPLEMENTATION.md).
 - **Auditable by design** — every assessment tracked in DynamoDB with full execution trail through Step Functions.
 
 ## Report Demo
 
-CloudSecure generates professional HTML reports with AI-powered executive summaries, risk scoring, and detailed findings across all security domains.
+CloudSecure generates HTML reports with an executive summary, risk scoring and
+detailed findings. The screenshots below use fictitious data and show the AI
+summary, which needs a working Bedrock model.
 
 ### Assessment Header & Risk Score
 ![Report Header](docs/screenshots/report-header.png)
@@ -87,21 +91,26 @@ CloudSecure generates professional HTML reports with AI-powered executive summar
 | **Encryption** | EBS, RDS, EFS encryption at rest |
 | **CloudTrail** | Trail configuration, root usage, metric filters |
 | **Native Services** | SecurityHub, GuardDuty, Config findings (if enabled) |
-| **Prowler** | CIS AWS 1.4 benchmarks (17 critical checks) |
+| **Prowler** | 22 hand-picked CIS checks (optional: needs the container image) |
 
-All analyzers run in parallel via Step Functions. Missing security services are reported as findings, not blockers.
+All analyzers run in parallel via Step Functions. A security service that is
+not enabled does not block the assessment; reporting it as a finding is not
+implemented yet.
 
 ## Compliance Mapping
 
-Findings map to: **CIS AWS 1.4** · **NIST 800-53** · **ISO 27001** · **GDPR** · **SOC2**
+Findings carry **CIS AWS 1.4** control references. The other frameworks
+(NIST 800-53, ISO 27001, GDPR, SOC 2) exist in the data model but nothing maps
+to them yet, and the CIS references are not yet shown in the report.
 
 ## Quick Start
 
 ### Prerequisites
 
 - AWS CLI configured with an IAM profile
-- Node.js 18+ and Python 3.12+
-- Docker or Podman (optional — required for Prowler CIS scanner)
+- Node.js 20+ and Python 3.12+ (CLI: Python 3.10+)
+- Docker or Podman (required for the Prowler scanner, and for a Lambda layer
+  that works on anything other than Linux x86_64)
 
 ### Install the CLI
 
