@@ -13,7 +13,7 @@ import logging
 import os
 import sys
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, ClassVar
 
 from botocore.exceptions import ClientError
 
@@ -35,9 +35,8 @@ logger.setLevel(logging.INFO)
 class CloudTrailAnalyzer(BaseAnalyzer):
     """Analyzer for CloudTrail and logging security issues."""
 
-    @property
-    def name(self) -> str:
-        return "cloudtrail-analyzer"
+    name: ClassVar[str] = "cloudtrail-analyzer"
+    scopes: ClassVar[tuple[str, ...]] = ("cloudtrail",)
 
     def analyze(self) -> list[Finding]:
         """Run CloudTrail security analysis."""

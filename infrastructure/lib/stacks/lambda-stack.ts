@@ -337,6 +337,7 @@ export class LambdaStack extends cdk.Stack {
       memorySize: 512,
       environment: {
         ASSESSMENTS_TABLE: assessmentsTable.tableName,
+        FINDINGS_TABLE: findingsTable.tableName,
         LOG_LEVEL: envName === 'prod' ? 'INFO' : 'DEBUG',
       },
       logRetention: logs.RetentionDays.ONE_MONTH,

@@ -13,7 +13,7 @@ import json
 import logging
 import os
 import sys
-from typing import Any
+from typing import Any, ClassVar
 
 from botocore.exceptions import ClientError
 
@@ -35,9 +35,8 @@ logger.setLevel(logging.INFO)
 class S3Analyzer(BaseAnalyzer):
     """Analyzer for S3 security issues."""
 
-    @property
-    def name(self) -> str:
-        return "s3-analyzer"
+    name: ClassVar[str] = "s3-analyzer"
+    scopes: ClassVar[tuple[str, ...]] = ("s3",)
 
     def analyze(self) -> list[Finding]:
         """Run S3 security analysis."""

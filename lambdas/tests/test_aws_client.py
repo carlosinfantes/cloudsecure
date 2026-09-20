@@ -1,5 +1,6 @@
 """Tests for AWS client utilities."""
 
+from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
 from shared.aws_client import (
@@ -7,6 +8,7 @@ from shared.aws_client import (
     get_assumed_role_session,
     get_boto3_client,
     get_default_region,
+    to_dynamodb_safe,
     validate_role_permissions,
 )
 
@@ -152,3 +154,38 @@ class TestGetAllRegions:
 
         mock_session.client.assert_called_with("ec2", region_name="us-east-1")
         assert regions == ["us-west-2"]
+
+
+class TestToDynamoDbSafe:
+    """The DynamoDB resource API rejects floats; every number must be Decimal."""
+
+    def test_converts_float(self):
+        assert to_dynamodb_safe(7.5) == Decimal("7.5")
+
+    def test_keeps_precision_of_the_literal(self):
+        # Decimal(0.1) would be 0.1000000000000000055511151231257827
+        assert to_dynamodb_safe(0.1) == Decimal("0.1")
+
+    def test_converts_floats_nested_in_dicts_and_lists(self):
+        item = {
+            "metadata": {"severityScore": 8.0, "confidence": 5.5},
+            "scores": [1.5, {"inner": 2.5}],
+        }
+        safe = to_dynamodb_safe(item)
+
+        assert safe["metadata"]["severityScore"] == Decimal("8.0")
+        assert safe["metadata"]["confidence"] == Decimal("5.5")
+        assert safe["scores"][0] == Decimal("1.5")
+        assert safe["scores"][1]["inner"] == Decimal("2.5")
+
+    def test_non_finite_floats_become_strings(self):
+        # DynamoDB has no representation for NaN/Infinity
+        assert to_dynamodb_safe(float("nan")) == "nan"
+        assert to_dynamodb_safe(float("inf")) == "inf"
+
+    def test_leaves_other_types_untouched(self):
+        assert to_dynamodb_safe(5) == 5
+        assert to_dynamodb_safe("text") == "text"
+        assert to_dynamodb_safe(True) is True
+        assert to_dynamodb_safe(None) is None
+        assert to_dynamodb_safe(Decimal("3")) == Decimal("3")

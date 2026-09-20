@@ -17,6 +17,9 @@ from uuid import uuid4
 import boto3
 from botocore.exceptions import ClientError
 
+from shared.aws_client import to_dynamodb_safe
+from shared.models import expires_at_epoch
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -182,7 +185,9 @@ def store_findings_in_dynamodb(findings: list[dict[str, Any]]) -> None:
             if finding.get("sourceId"):
                 item["sourceId"] = finding["sourceId"]
 
-            batch.put_item(Item=item)
+            item["expiresAt"] = expires_at_epoch()
+
+            batch.put_item(Item=to_dynamodb_safe(item))
 
     logger.info(f"Stored {len(findings)} findings in DynamoDB")
 

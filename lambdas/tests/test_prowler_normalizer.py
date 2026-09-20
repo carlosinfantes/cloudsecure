@@ -121,35 +121,62 @@ class TestNormalizeLegacyFinding:
 
 
 class TestNormalizeOcsfFinding:
+    """OCSF findings as Prowler actually emits them.
+
+    Prowler's DetectionFinding puts the check outcome in `status_code`
+    (PASS/FAIL/MANUAL); `status` holds the lifecycle (New/Suppressed), the
+    check ID lives in `metadata.event_code`, and compliance under `unmapped`.
+    """
+
     def _make_ocsf_finding(self, **overrides):
         base = {
-            "status": "FAIL",
-            "status_id": 2,
+            "status_code": "FAIL",
+            "status": "New",
+            "status_id": 1,
             "severity_id": 4,
+            "severity": "High",
             "finding_info": {
-                "uid": "check-123",
+                "uid": "prowler-aws-iam_root_mfa_enabled-123456789012-us-east-1-root",
                 "title": "Test Check",
                 "desc": "Description",
             },
             "message": "Detailed message",
+            "metadata": {"event_code": "iam_root_mfa_enabled"},
             "resources": [
                 {
-                    "uid": "resource-1",
+                    "uid": "arn:aws:iam::123456789012:root",
+                    "name": "root",
                     "type": "AwsIamUser",
                     "region": "us-east-1",
-                    "cloud": {"account": {"uid": "arn:aws:iam::123456789012:root"}},
+                    "group": {"name": "iam"},
                 }
             ],
             "remediation": {
                 "desc": "Fix it",
                 "references": ["https://example.com"],
             },
+            "unmapped": {"compliance": {"CIS-1.4": ["1.5"]}},
+            "cloud": {"account": {"uid": "123456789012"}, "region": "us-east-1"},
         }
         base.update(overrides)
         return base
 
-    def test_pass_status_returns_none(self):
-        finding = self._make_ocsf_finding(status="PASS", status_id=1)
+    def test_passing_check_is_not_a_finding(self):
+        """A passing check reported as a finding inflates the risk score."""
+        finding = self._make_ocsf_finding(status_code="PASS")
+        assert normalize_ocsf_finding(finding, ASSESSMENT_ID, ACCOUNT_ID) is None
+
+    def test_manual_check_is_not_a_finding(self):
+        finding = self._make_ocsf_finding(status_code="MANUAL")
+        assert normalize_ocsf_finding(finding, ASSESSMENT_ID, ACCOUNT_ID) is None
+
+    def test_new_lifecycle_status_does_not_hide_a_failure(self):
+        """`status` is New on every fresh finding: it must not be read as PASS."""
+        finding = self._make_ocsf_finding(status="New", status_code="FAIL")
+        assert normalize_ocsf_finding(finding, ASSESSMENT_ID, ACCOUNT_ID) is not None
+
+    def test_suppressed_finding_is_skipped(self):
+        finding = self._make_ocsf_finding(status="Suppressed")
         assert normalize_ocsf_finding(finding, ASSESSMENT_ID, ACCOUNT_ID) is None
 
     def test_fail_returns_normalized(self):
@@ -161,6 +188,24 @@ class TestNormalizeOcsfFinding:
         assert result["source"] == "prowler"
         assert result["resourceType"] == "AWS::IAM::User"
 
+    def test_check_id_comes_from_metadata_event_code(self):
+        """finding_info.uid is a per-finding hash, not the check ID."""
+        result = normalize_ocsf_finding(self._make_ocsf_finding(), ASSESSMENT_ID, ACCOUNT_ID)
+        assert result["sourceId"] == "iam_root_mfa_enabled"
+
+    def test_resource_arn_comes_from_the_resource_not_the_account(self):
+        result = normalize_ocsf_finding(self._make_ocsf_finding(), ASSESSMENT_ID, ACCOUNT_ID)
+        assert result["resourceId"] == "arn:aws:iam::123456789012:root"
+        assert result["resourceArn"] == "arn:aws:iam::123456789012:root"
+
+    def test_non_arn_resource_has_no_arn(self):
+        finding = self._make_ocsf_finding(
+            resources=[{"uid": "my-bucket", "type": "AwsS3Bucket", "region": "eu-west-1"}]
+        )
+        result = normalize_ocsf_finding(finding, ASSESSMENT_ID, ACCOUNT_ID)
+        assert result["resourceId"] == "my-bucket"
+        assert result["resourceArn"] is None
+
     def test_severity_id_mapping(self):
         for sev_id, expected in [
             (0, "INFO"),
@@ -170,7 +215,7 @@ class TestNormalizeOcsfFinding:
             (4, "HIGH"),
             (5, "CRITICAL"),
         ]:
-            finding = self._make_ocsf_finding(severity_id=sev_id, status="FAIL", status_id=2)
+            finding = self._make_ocsf_finding(severity_id=sev_id)
             result = normalize_ocsf_finding(finding, ASSESSMENT_ID, ACCOUNT_ID)
             assert result is not None
             assert result["severity"] == expected
@@ -181,20 +226,32 @@ class TestNormalizeOcsfFinding:
         assert result is not None
         assert result["resourceId"] == "unknown"
 
+    def test_region_falls_back_to_the_cloud_block(self):
+        finding = self._make_ocsf_finding(
+            resources=[{"uid": "acct", "type": "AwsAccount"}],
+            cloud={"account": {"uid": "123456789012"}, "region": "eu-west-1"},
+        )
+        result = normalize_ocsf_finding(finding, ASSESSMENT_ID, ACCOUNT_ID)
+        assert result["region"] == "eu-west-1"
+
     def test_remediation_extracted(self):
         finding = self._make_ocsf_finding()
         result = normalize_ocsf_finding(finding, ASSESSMENT_ID, ACCOUNT_ID)
         assert result["remediation"]["description"] == "Fix it"
         assert result["remediation"]["url"] == "https://example.com"
 
-    def test_compliance_mappings(self):
+    def test_compliance_mappings_come_from_unmapped(self):
         finding = self._make_ocsf_finding(
-            compliance={"CIS": ["1.1", "1.2"]},
-            status="FAIL",
-            status_id=2,
+            unmapped={"compliance": {"CIS-1.4": ["1.5", "1.6"], "NIST-800-53": ["AC-2"]}}
         )
         result = normalize_ocsf_finding(finding, ASSESSMENT_ID, ACCOUNT_ID)
-        assert len(result["complianceFrameworks"]) == 2
+        assert len(result["complianceFrameworks"]) == 3
+        assert {"framework": "CIS-1.4", "control": "1.5"} in result["complianceFrameworks"]
+
+    def test_missing_compliance_is_empty(self):
+        finding = self._make_ocsf_finding(unmapped={})
+        result = normalize_ocsf_finding(finding, ASSESSMENT_ID, ACCOUNT_ID)
+        assert result["complianceFrameworks"] == []
 
 
 # --- normalize_prowler_finding ---
@@ -202,14 +259,14 @@ class TestNormalizeOcsfFinding:
 
 class TestNormalizeProwlerFinding:
     def test_dispatches_to_ocsf_when_status_id_present(self):
-        finding = {"status_id": 2, "status": "FAIL", "severity_id": 3, "resources": []}
+        finding = {"status_id": 1, "status_code": "FAIL", "severity_id": 3, "resources": []}
         result = normalize_prowler_finding(finding, ASSESSMENT_ID, ACCOUNT_ID)
         assert result is not None  # OCSF path taken (FAIL status_id=2)
 
     def test_dispatches_to_ocsf_when_finding_info_present(self):
         finding = {
             "finding_info": {"title": "Test"},
-            "status": "FAIL",
+            "status_code": "FAIL",
             "severity_id": 3,
             "resources": [],
         }

@@ -3,6 +3,9 @@
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import boto3
+from moto import mock_aws
+
 from analyzers.network_analyzer import NetworkAnalyzer, handler
 from shared.models import FindingSeverity
 
@@ -211,9 +214,15 @@ class TestNetworkAnalyzerVPC:
         analyzer = _make_analyzer()
         mock_ec2 = MagicMock()
         mock_ec2.describe_vpcs.return_value = {"Vpcs": [{"VpcId": "vpc-123", "IsDefault": False}]}
+        # Shape as returned by EC2 DescribeFlowLogs: no ResourceType field.
         mock_ec2.describe_flow_logs.return_value = {
             "FlowLogs": [
-                {"ResourceId": "vpc-123", "ResourceType": "VPC", "FlowLogStatus": "ACTIVE"}
+                {
+                    "FlowLogId": "fl-123",
+                    "ResourceId": "vpc-123",
+                    "FlowLogStatus": "ACTIVE",
+                    "TrafficType": "ALL",
+                }
             ]
         }
 
@@ -314,3 +323,43 @@ class TestNetworkAnalyzerHandler:
         mock_run.return_value = {"success": True}
         handler({"assessmentId": "test"}, None)
         mock_run.assert_called_once_with(NetworkAnalyzer, {"assessmentId": "test"})
+
+
+class TestVpcFlowLogsAgainstRealApiShape:
+    """Flow log checks against moto, which returns the real EC2 response shape.
+
+    Regression guard: the check used to read ``fl["ResourceType"]``, a field
+    DescribeFlowLogs does not return, so any account that actually had flow
+    logs raised KeyError and lost every network finding.
+    """
+
+    @mock_aws
+    def test_vpc_with_flow_logs_is_not_reported(self):
+        ec2 = boto3.client("ec2", region_name="us-east-1")
+        s3 = boto3.client("s3", region_name="us-east-1")
+        s3.create_bucket(Bucket="flow-logs-bucket")
+        vpc_id = ec2.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
+        ec2.create_flow_logs(
+            ResourceIds=[vpc_id],
+            ResourceType="VPC",
+            TrafficType="ALL",
+            LogDestinationType="s3",
+            LogDestination="arn:aws:s3:::flow-logs-bucket",
+        )
+
+        analyzer = _make_analyzer()
+        analyzer._check_vpc_flow_logs(ec2, "us-east-1")
+
+        reported = {f.resource_id for f in analyzer.findings}
+        assert vpc_id not in reported
+
+    @mock_aws
+    def test_vpc_without_flow_logs_is_reported(self):
+        ec2 = boto3.client("ec2", region_name="us-east-1")
+        vpc_id = ec2.create_vpc(CidrBlock="10.0.0.0/16")["Vpc"]["VpcId"]
+
+        analyzer = _make_analyzer()
+        analyzer._check_vpc_flow_logs(ec2, "us-east-1")
+
+        reported = {f.resource_id for f in analyzer.findings}
+        assert vpc_id in reported

@@ -1,11 +1,24 @@
 """Core data models for CloudSecure assessments and findings."""
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
+
+#: Days of retention for assessment data, enforced by the DynamoDB TTL on
+#: the `expiresAt` attribute of every table.
+RETENTION_DAYS = 90
+
+
+def expires_at_epoch(days: int = RETENTION_DAYS) -> int:
+    """Value for the `expiresAt` TTL attribute: now + `days`, as a Unix time.
+
+    Every writer must set it; DynamoDB never expires an item that lacks the
+    attribute, so a missing value means the data is kept forever.
+    """
+    return int((datetime.now(UTC) + timedelta(days=days)).timestamp())
 
 
 class AssessmentStatus(str, Enum):
@@ -143,6 +156,7 @@ class Assessment(BaseModel):
             "infoCount": self.info_count,
             "scope": self.scope,
             "complianceFrameworks": self.compliance_frameworks,
+            "expiresAt": expires_at_epoch(),
         }
         if self.started_at:
             item["startedAt"] = self.started_at.isoformat()
