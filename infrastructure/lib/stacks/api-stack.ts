@@ -8,6 +8,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import { Construct } from 'constructs';
 import * as path from 'path';
+import { pythonLambdaCode } from '../lambda-asset';
 
 export interface ApiStackProps extends cdk.StackProps {
   envName: string;
@@ -71,7 +72,7 @@ export class ApiStack extends cdk.Stack {
       functionName: `cloudsecure-start-assessment-${envName}`,
       runtime: pythonRuntime,
       handler: 'start_assessment.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'api_handlers')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'api_handlers')),
       layers: [sharedLayer],
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
@@ -92,7 +93,7 @@ export class ApiStack extends cdk.Stack {
       functionName: `cloudsecure-get-assessment-${envName}`,
       runtime: pythonRuntime,
       handler: 'get_assessment.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'api_handlers')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'api_handlers')),
       layers: [sharedLayer],
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
@@ -111,7 +112,7 @@ export class ApiStack extends cdk.Stack {
       functionName: `cloudsecure-list-assessments-${envName}`,
       runtime: pythonRuntime,
       handler: 'list_assessments.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'api_handlers')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'api_handlers')),
       layers: [sharedLayer],
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
@@ -130,7 +131,7 @@ export class ApiStack extends cdk.Stack {
       functionName: `cloudsecure-get-report-${envName}`,
       runtime: pythonRuntime,
       handler: 'get_report.handler',
-      code: lambda.Code.fromAsset(path.join(lambdasPath, 'api_handlers')),
+      code: pythonLambdaCode(path.join(lambdasPath, 'api_handlers')),
       layers: [sharedLayer],
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,

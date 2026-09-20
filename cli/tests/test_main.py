@@ -130,5 +130,5 @@ class TestWithRetry:
 
         result = _with_retry(ctx, lambda c: c.get("test"))
         assert result == {"ok": True}
-        mock_invalidate.assert_called_once_with(env_name="dev", region=None)
+        mock_invalidate.assert_called_once_with(env_name="dev", region=None, profile=None)
         assert mock_build.call_count == 2

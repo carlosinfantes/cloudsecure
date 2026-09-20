@@ -24,6 +24,16 @@ def save_config(config: dict) -> None:
     CONFIG_FILE.write_text(json.dumps(config, indent=2))
 
 
+def cache_key(profile: str | None, env_name: str, region: str | None) -> str:
+    """Key under which an endpoint is cached.
+
+    An endpoint belongs to one profile, environment and region, so all three
+    identify it. Both the reader and the invalidator must build the key the
+    same way, or the cache can never be cleared.
+    """
+    return f"{profile or 'default'}:{env_name}:{region or 'default'}"
+
+
 def resolve_api_endpoint(profile: str | None = None, region: str | None = None,
                          env_name: str = "dev") -> str:
     """Resolve the API Gateway endpoint URL.
@@ -39,7 +49,7 @@ def resolve_api_endpoint(profile: str | None = None, region: str | None = None,
         return endpoint.rstrip("/")
 
     config = get_config()
-    cache_key = f"{profile or 'default'}:{env_name}:{region or 'default'}"
+    key = cache_key(profile, env_name, region)
 
     # Query CloudFormation (live, always fresh)
     try:
@@ -52,14 +62,14 @@ def resolve_api_endpoint(profile: str | None = None, region: str | None = None,
         for output in outputs:
             if output["OutputKey"] == "ApiEndpoint":
                 endpoint = output["OutputValue"].rstrip("/")
-                config.setdefault("endpoints", {})[cache_key] = endpoint
+                config.setdefault("endpoints", {})[key] = endpoint
                 save_config(config)
                 return endpoint
     except Exception:
         pass
 
     # Fall back to cache (e.g. when offline or lacking CFN permissions)
-    cached = config.get("endpoints", {}).get(cache_key)
+    cached = config.get("endpoints", {}).get(key)
     if cached:
         return cached
 
@@ -69,11 +79,15 @@ def resolve_api_endpoint(profile: str | None = None, region: str | None = None,
     )
 
 
-def invalidate_endpoint(env_name: str = "dev", region: str | None = None) -> None:
+def invalidate_endpoint(
+    env_name: str = "dev",
+    region: str | None = None,
+    profile: str | None = None,
+) -> None:
     """Remove a cached endpoint so the next resolve fetches from CloudFormation."""
     config = get_config()
-    cache_key = f"{env_name}:{region or 'default'}"
+    key = cache_key(profile, env_name, region)
     endpoints = config.get("endpoints", {})
-    if cache_key in endpoints:
-        del endpoints[cache_key]
+    if key in endpoints:
+        del endpoints[key]
         save_config(config)

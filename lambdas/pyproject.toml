@@ -10,8 +10,9 @@ authors = [
 
 dependencies = [
     "boto3>=1.34.0",
-    "pydantic>=2.5.0",
+    "pydantic>=2.5.0,<3",
     "python-dateutil>=2.8.0",
+    "jinja2>=3.1.4",
 ]
 
 [project.optional-dependencies]
@@ -53,4 +54,10 @@ disallow_untyped_defs = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=shared --cov=ai_synthesis --cov=analyzers --cov=api_handlers --cov=prowler_scanner --cov-report=term-missing"
+# Measure every package, not just the well-covered ones: a partial --cov list
+# reported 73% while real coverage was about half that.
+addopts = """-v \
+    --cov=shared --cov=ai_synthesis --cov=analyzers --cov=api_handlers \
+    --cov=prowler_scanner --cov=report_generator --cov=validate_role \
+    --cov=discovery_module --cov=native_service_puller \
+    --cov-report=term-missing --cov-fail-under=50"""

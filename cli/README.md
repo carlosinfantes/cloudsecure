@@ -10,7 +10,7 @@ pip install cloudsecure
 pipx install cloudsecure
 ```
 
-Requires Python 3.9+ and AWS credentials configured (`aws configure`).
+Requires Python 3.10+ and AWS credentials configured (`aws configure`).
 
 ## Quick Start
 
@@ -54,7 +54,7 @@ cloudsecure --profile my-profile --region eu-west-1 --env prod status
 
 ## Prerequisites
 
-- **Python 3.9+**
+- **Python 3.10+**
 - **AWS credentials** with access to the CloudSecure API Gateway
 - **CloudSecure backend deployed** — see the [full repository](https://github.com/carlosinfantes/cloudsecure) for infrastructure deployment instructions
 

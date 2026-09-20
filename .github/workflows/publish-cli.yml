@@ -10,13 +10,50 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Build distribution
+  verify:
+    name: Verify release
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Check the tag matches __version__
+        # PyPI rejects a re-upload, so a mismatch here means publishing a
+        # version that does not exist anywhere else.
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION=$(python -c "import re,pathlib; \
+            print(re.search(r'__version__\s*=\s*\"([^\"]+)\"', \
+            pathlib.Path('cli/cloudsecure/__init__.py').read_text()).group(1))")
+          echo "tag=$TAG  __version__=$VERSION"
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "::error::Tag $TAG does not match __version__ $VERSION"
+            exit 1
+          fi
+
+      - name: Install CLI
+        run: pip install -e ".[dev]"
+        working-directory: cli
+
+      - name: Run tests
+        # 0.3.0 was published with a failing test; this is the gate.
+        run: python -m pytest tests/ -v
+        working-directory: cli
+        env:
+          AWS_CONFIG_FILE: /dev/null
+          AWS_SHARED_CREDENTIALS_FILE: /dev/null
+
+  build:
+    name: Build distribution
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 

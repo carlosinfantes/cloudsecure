@@ -143,8 +143,13 @@ aws cloudformation deploy \
   --template-file onboarding/cloudformation/cloudsecure-role.yaml \
   --stack-name CloudSecure-AssessmentRole \
   --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides ExternalId=your-external-id
+  --parameter-overrides \
+    CloudSecureAccountId=<account-id-where-cloudsecure-runs> \
+    ExternalId=<external-id>
 ```
+
+Both parameters are required. The external ID must be at least 16 characters
+and hard to guess: it is what stops a third party from using the role.
 
 ### Upgrade Components
 

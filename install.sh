@@ -13,7 +13,7 @@ echo ""
 echo -e "${BOLD}CloudSecure CLI Installer${NC}"
 echo ""
 
-# Check Python 3.9+
+# Check Python 3.10+
 if ! command -v python3 >/dev/null 2>&1; then
   fail "Python 3 not found. Install from https://www.python.org/downloads/"
 fi
@@ -22,8 +22,8 @@ PY_VERSION=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.versi
 PY_MAJOR=$(echo "$PY_VERSION" | cut -d. -f1)
 PY_MINOR=$(echo "$PY_VERSION" | cut -d. -f2)
 
-if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 9 ]; }; then
-  fail "Python 3.9+ required (found $PY_VERSION)"
+if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 10 ]; }; then
+  fail "Python 3.10+ required (found $PY_VERSION)"
 fi
 
 ok "Python $PY_VERSION"

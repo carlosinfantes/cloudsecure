@@ -4,6 +4,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 from cloudsecure.config import (
+    cache_key,
     get_config,
     invalidate_endpoint,
     resolve_api_endpoint,
@@ -23,10 +24,12 @@ class TestResolveApiEndpoint:
         assert result == "https://env-var.example.com/dev"
 
     @patch("cloudsecure.config.get_config")
-    def test_cached_value_used(self, mock_get_config, monkeypatch):
+    @patch("cloudsecure.config.boto3")
+    def test_cached_value_used(self, mock_boto3, mock_get_config, monkeypatch):
         monkeypatch.delenv("CLOUDSECURE_API_ENDPOINT", raising=False)
+        mock_boto3.Session.side_effect = Exception("no AWS in unit tests")
         mock_get_config.return_value = {
-            "endpoints": {"dev:default": "https://cached.example.com/dev"}
+            "endpoints": {"default:dev:default": "https://cached.example.com/dev"}
         }
         result = resolve_api_endpoint(env_name="dev")
         assert result == "https://cached.example.com/dev"
@@ -76,14 +79,14 @@ class TestInvalidateEndpoint:
     def test_removes_cached_key(self, mock_get_config, mock_save):
         mock_get_config.return_value = {
             "endpoints": {
-                "dev:default": "https://old.example.com/dev",
-                "prod:eu-west-1": "https://prod.example.com/prod",
+                "default:dev:default": "https://old.example.com/dev",
+                "default:prod:eu-west-1": "https://prod.example.com/prod",
             }
         }
         invalidate_endpoint(env_name="dev", region=None)
         saved = mock_save.call_args[0][0]
-        assert "dev:default" not in saved["endpoints"]
-        assert "prod:eu-west-1" in saved["endpoints"]
+        assert "default:dev:default" not in saved["endpoints"]
+        assert "default:prod:eu-west-1" in saved["endpoints"]
 
     @patch("cloudsecure.config.save_config")
     @patch("cloudsecure.config.get_config")
@@ -103,6 +106,45 @@ class TestGetAndSaveConfig:
         monkeypatch.setattr("cloudsecure.config.CONFIG_FILE", config_file)
         monkeypatch.setattr("cloudsecure.config.CONFIG_DIR", tmp_path)
 
-        save_config({"endpoints": {"dev:default": "https://test.com"}})
+        save_config({"endpoints": {"default:dev:default": "https://test.com"}})
         result = get_config()
-        assert result["endpoints"]["dev:default"] == "https://test.com"
+        assert result["endpoints"]["default:dev:default"] == "https://test.com"
+
+
+class TestCacheKeyRoundTrip:
+    """resolve and invalidate must agree on the key.
+
+    They did not: invalidate_endpoint left out the profile, so the refresh
+    after a connection error never cleared the stale endpoint and the CLI
+    kept calling the old API.
+    """
+
+    def test_profile_env_and_region_all_take_part(self):
+        keys = {
+            cache_key(None, "dev", None),
+            cache_key("work", "dev", None),
+            cache_key(None, "prod", None),
+            cache_key(None, "dev", "eu-west-1"),
+        }
+        assert len(keys) == 4
+
+    @patch("cloudsecure.config.save_config")
+    @patch("cloudsecure.config.get_config")
+    @patch("cloudsecure.config.boto3")
+    def test_invalidate_removes_the_key_resolve_wrote(
+        self, mock_boto3, mock_get_config, mock_save
+    ):
+        mock_cfn = MagicMock()
+        mock_cfn.describe_stacks.return_value = {
+            "Stacks": [{"Outputs": [{"OutputKey": "ApiEndpoint", "OutputValue": "https://a/dev"}]}]
+        }
+        mock_boto3.Session.return_value.client.return_value = mock_cfn
+        stored = {}
+        mock_get_config.return_value = stored
+
+        resolve_api_endpoint(profile="work", region="eu-west-1", env_name="dev")
+        assert stored["endpoints"]
+
+        invalidate_endpoint(env_name="dev", region="eu-west-1", profile="work")
+
+        assert stored["endpoints"] == {}

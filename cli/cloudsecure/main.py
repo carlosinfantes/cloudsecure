@@ -54,7 +54,7 @@ def _with_retry(ctx, fn):
         return fn(client)
     except _requests.exceptions.ConnectionError:
         console.print("[yellow]Connection failed — refreshing API endpoint from CloudFormation...[/yellow]")
-        invalidate_endpoint(env_name=env_name, region=region)
+        invalidate_endpoint(env_name=env_name, region=region, profile=profile)
         client = _build_client(profile, region, env_name)
         return fn(client)
 
